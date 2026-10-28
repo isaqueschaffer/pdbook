@@ -1,0 +1,222 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/literata";
+@import "@fontsource-variable/literata/wght-italic.css";
+
+/* Design tokens. Utilities such as bg-surface / text-ink / border-line map to these variables,
+   so the whole app switches to dark mode by redefining them. */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Literata Variable", Georgia, "Times New Roman", serif;
+}
+
+:root {
+  color-scheme: light;
+  --bg: #f7f5f0;
+  --surface: #ffffff;
+  --surface-2: #f0ede6;
+  --ink: #1f1d1a;
+  --ink-soft: #57524a;
+  --ink-faint: #8a847a;
+  --line: #e4dfd5;
+  --accent: #2f4a3f;
+  --accent-hover: #253b32;
+  --accent-ink: #f7f5f0;
+  --accent-soft: #e3ebe6;
+  --danger: #b4372f;
+  --danger-soft: #f8e5e3;
+  --success: #2f7a4f;
+  --success-soft: #e2f1e8;
+  --warning: #9a6512;
+  --warning-soft: #f8eedb;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #141513;
+    --surface: #1c1d1b;
+    --surface-2: #242522;
+    --ink: #ebe8e1;
+    --ink-soft: #b5b0a6;
+    --ink-faint: #858076;
+    --line: #2f302d;
+    --accent: #8fb5a3;
+    --accent-hover: #a6c7b7;
+    --accent-ink: #12201a;
+    --accent-soft: #233029;
+    --danger: #e3786f;
+    --danger-soft: #3a2220;
+    --success: #7cc49a;
+    --success-soft: #1e3126;
+    --warning: #e0b061;
+    --warning-soft: #3a2f1c;
+  }
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- Reader surface: themes are scoped to the reader, independent of the app theme ---------- */
+.reader {
+  --r-bg: #fdfcf9;
+  --r-ink: #24221e;
+  --r-soft: #6b665d;
+  --r-line: #e8e3d8;
+  --r-panel: #ffffff;
+  --r-accent: #2f4a3f;
+  --r-mark-yellow: #fbe9a5;
+  --r-mark-green: #cfe8d2;
+  --r-mark-blue: #cfe0f3;
+  --r-mark-pink: #f6d3df;
+  --r-search: #f3c969;
+  background: var(--r-bg);
+  color: var(--r-ink);
+  color-scheme: light;
+}
+.reader[data-theme="sepia"] {
+  --r-bg: #f4ecd8;
+  --r-ink: #4a3b2a;
+  --r-soft: #7d6a52;
+  --r-line: #e2d5b8;
+  --r-panel: #f9f2e1;
+  --r-accent: #7a4f25;
+  --r-mark-yellow: #ecd58a;
+  --r-mark-green: #c9d9a8;
+  --r-mark-blue: #c6d3d6;
+  --r-mark-pink: #e9c2b6;
+}
+.reader[data-theme="dark"] {
+  --r-bg: #151617;
+  --r-ink: #d8d4cb;
+  --r-soft: #928d83;
+  --r-line: #2a2b2d;
+  --r-panel: #1d1e20;
+  --r-accent: #9cc2ae;
+  --r-mark-yellow: #5b4c1c;
+  --r-mark-green: #29452f;
+  --r-mark-blue: #253a52;
+  --r-mark-pink: #52283a;
+  --r-search: #8a6a1f;
+  color-scheme: dark;
+}
+
+.book-text {
+  font-size: var(--fs);
+  line-height: var(--lh);
+  max-width: var(--mw);
+  padding-inline: var(--mx);
+  margin-inline: auto;
+  hyphens: auto;
+  overflow-wrap: break-word;
+  font-kerning: normal;
+  font-variant-ligatures: common-ligatures;
+}
+.book-text[data-font="serif"] {
+  font-family: var(--font-serif);
+}
+.book-text[data-font="sans"] {
+  font-family: var(--font-sans);
+}
+.book-text[data-justify="true"] p {
+  text-align: justify;
+}
+.book-text p,
+.book-text li {
+  margin-block: 0 calc(var(--ps) * 1em);
+}
+.book-text li {
+  list-style: none;
+  padding-left: 1.4em;
+  text-indent: -1.4em;
+}
+.book-text h1,
+.book-text h2,
+.book-text h3 {
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.book-text h1 {
+  font-size: 1.75em;
+  margin: 1.4em 0 0.9em;
+}
+.book-text h2 {
+  font-size: 1.35em;
+  margin: 1.3em 0 0.7em;
+}
+.book-text h3 {
+  font-size: 1.12em;
+  margin: 1.2em 0 0.6em;
+}
+.book-text figure {
+  margin: 1.5em 0;
+}
+.book-text figure img {
+  margin-inline: auto;
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+.reader[data-theme="dark"] .book-text figure img {
+  filter: brightness(0.88);
+}
+.book-text mark {
+  color: inherit;
+  border-radius: 2px;
+  padding: 0.05em 0;
+  cursor: pointer;
+}
+.book-text mark[data-color="yellow"] { background: var(--r-mark-yellow); }
+.book-text mark[data-color="green"] { background: var(--r-mark-green); }
+.book-text mark[data-color="blue"] { background: var(--r-mark-blue); }
+.book-text mark[data-color="pink"] { background: var(--r-mark-pink); }
+.book-text mark[data-note="true"] {
+  text-decoration: underline dotted;
+  text-underline-offset: 0.2em;
+}
+.book-text .flash {
+  animation: flash 1.6s ease-out;
+}
+@keyframes flash {
+  0% { background: var(--r-search); }
+  100% { background: transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

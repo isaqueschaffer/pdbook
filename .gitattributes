@@ -1,0 +1,4 @@
+# Keep LF everywhere: scripts, Dockerfiles and configs run on the Linux VM.
+* text=auto eol=lf
+*.png binary
+*.pdf binary

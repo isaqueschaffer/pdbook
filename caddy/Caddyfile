@@ -1,0 +1,59 @@
+# BookFlow — Caddy reverse proxy.
+# SITE_ADDRESS: your domain (e.g. leitura.exemplo.com) for automatic HTTPS via Let's Encrypt,
+# or ":80" to serve plain HTTP (local tests / before DNS is ready).
+{
+	email {$ACME_EMAIL:admin@example.com}
+	admin off
+}
+
+{$SITE_ADDRESS::80} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+		-Server
+	}
+
+	# API: everything under /api goes to FastAPI. Uploads are capped here as well (MAX_UPLOAD_MB + margin).
+	handle /api/* {
+		request_body {
+			max_size {$MAX_REQUEST_BODY:52MB}
+		}
+		reverse_proxy backend:8000 {
+			transport http {
+				read_timeout 5m
+				write_timeout 5m
+			}
+		}
+	}
+
+	# Single-page app: hashed assets are immutable, index.html is never cached.
+	handle {
+		root * /srv
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		@pdfjs path /pdfjs/*
+		header @pdfjs Cache-Control "public, max-age=604800"
+		try_files {path} /index.html
+		header /index.html Cache-Control "no-cache"
+		file_server
+	}
+
+	# Access log without query strings (they may carry search terms). Cookies are never logged by Caddy.
+	log {
+		output stdout
+		format filter {
+			wrap console
+			fields {
+				request>uri query {
+					delete q
+				}
+			}
+		}
+	}
+}
