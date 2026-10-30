@@ -144,7 +144,10 @@ def run_conversion(job_id: str) -> str:
         book.content_bytes = storage.dir_size(final_dir)
         if result.needs_ocr:
             book.status = "needs_ocr"
-            book.status_message = "O documento parece digitalizado e tem pouco texto extraível. Use o modo PDF ou processe com OCR."
+            book.status_message = (
+                "O texto deste PDF não pôde ser extraído (documento digitalizado ou com fontes sem codificação). "
+                "Leia no modo PDF ou use “Processar com OCR” para gerar o modo Livro."
+            )
         elif not result.chapters:
             book.status = "needs_ocr" if settings.ocr_enabled else "failed"
             book.status_message = "Nenhum texto foi encontrado no documento."

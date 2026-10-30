@@ -102,6 +102,40 @@ def test_page_fallback_chapters_when_no_headings():
     assert [c[0] for c in chapters] == ["Páginas 1–15", "Páginas 16–30", "Páginas 31–40"]
 
 
+def test_garbled_text_layer_is_detected():
+    from app.converters.pdf import Line, RawBlock, _is_readable
+
+    def block(text):
+        return RawBlock(1, 0, 0, 100, 10, [Line(text, 0, 0, 100, 10, 11, False)])
+
+    # Real-world sample: fonts without ToUnicode yield symbol soup instead of letters.
+    assert not _is_readable([block("#$!%! #B! ' #!$ (/$ )( 98? 3! &! #$! :. )( $%$")])
+    assert _is_readable([block("Nesta lindíssima novela os protagonistas encontram-se durante quatro noites.")])
+    assert _is_readable([block("Capítulo 1 — 1848 (pág. 12)")])
+
+
+def test_caps_titles_become_headings_on_ocr_pages():
+    from app.converters.pdf import Line, RawBlock, _block_items, _is_caps_title
+
+    assert _is_caps_title("PRIMEIRA NOITE") and _is_caps_title("A MANHÃ")
+    assert not _is_caps_title("Era uma noite prodigiosa") and not _is_caps_title("(1848)")
+    lines = [
+        Line("QUARTA NOITE", 0, 0, 100, 10, 11, False),
+        Line("Meu Deus! Como acabou tudo isto!", 0, 12, 200, 22, 11, False),
+    ]
+    items = _block_items(RawBlock(102, 0, 0, 200, 22, lines, ocr=True), 11, {})
+    assert [(i.type, i.text) for i in items] == [("heading", "QUARTA NOITE"), ("paragraph", "Meu Deus! Como acabou tudo isto!")]
+
+
+def test_metadata_title_cleanup():
+    from app.converters.pdf import clean_title
+
+    raw = "(Microsoft Word - Fi\\363dor M. Dostoi\\351vski - Noites brancas.doc)"
+    assert clean_title(raw) == "Fiódor M. Dostoiévski - Noites brancas"
+    assert clean_title("Untitled") is None
+    assert clean_title("Livro de Teste") == "Livro de Teste"
+
+
 def test_parse_tesseract_tsv():
     tsv = (
         "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n"

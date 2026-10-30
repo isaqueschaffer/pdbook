@@ -86,6 +86,7 @@ class RawBlock:
     image_w: int = 0
     image_h: int = 0
     image_xref: int = 0
+    ocr: bool = False
 
 
 @dataclass
@@ -168,6 +169,31 @@ def _ends_sentence(text: str) -> bool:
     return text.rstrip().endswith(TERMINAL_PUNCT)
 
 
+def _is_readable(blocks: list[RawBlock]) -> bool:
+    """False when the extracted text is mostly symbols, the signature of embedded fonts that have no
+    Unicode mapping: the page looks fine but copy/extraction yields '!$(.4' instead of letters.
+    Real prose in Latin, Cyrillic, Greek or CJK scripts is overwhelmingly alphabetic."""
+    total = letters = 0
+    for b in blocks:
+        for ln in b.lines:
+            for c in ln.text:
+                if not c.isspace():
+                    total += 1
+                    letters += c.isalpha() or c.isdigit()
+    return total == 0 or letters / total >= 0.5
+
+
+def _is_caps_title(text: str) -> bool:
+    letters = [c for c in text if c.isalpha()]
+    return (
+        len(letters) >= 4
+        and len(text) <= 60
+        and len(text.split()) <= 6
+        and sum(c.isupper() for c in letters) / len(letters) >= 0.9
+        and not text.rstrip().endswith((".", ",", ";"))
+    )
+
+
 def _norm_running(text: str) -> str:
     return re.sub(r"\d+", "#", text.lower()).strip()
 
@@ -228,7 +254,7 @@ def _ocr_blocks(page: pymupdf.Page, page_no: int, opts: ConversionOptions, langu
         ]
         if lines:
             blocks.append(
-                RawBlock(page_no, min(l.x0 for l in lines), min(l.y0 for l in lines), max(l.x1 for l in lines), max(l.y1 for l in lines), lines)
+                RawBlock(page_no, min(l.x0 for l in lines), min(l.y0 for l in lines), max(l.x1 for l in lines), max(l.y1 for l in lines), lines, ocr=True)
             )
     return blocks
 
@@ -381,10 +407,12 @@ def _block_items(b: RawBlock, body: float, levels: dict[float, int]) -> list[Ite
         return [Item("image", b.page, image=b.image, width=b.image_w, height=b.image_h)]
 
     items: list[Item] = []
+    # OCR line heights are noisy (caps vs. lowercase words), so only clearly bigger text counts.
+    size_factor = 1.6 if b.ocr else 1.2
     groups: list[tuple[int, list[Line]]] = []  # (heading level or 0, lines)
     for ln in b.lines:
         lvl = 0
-        if ln.size >= body * 1.2 and len(ln.text) <= 150 and any(c.isalpha() for c in ln.text):
+        if ln.size >= body * size_factor and len(ln.text) <= 150 and any(c.isalpha() for c in ln.text):
             lvl = levels.get(ln.size) or 3
         if groups and groups[-1][0] == lvl:
             groups[-1][1].append(ln)
@@ -396,6 +424,15 @@ def _block_items(b: RawBlock, body: float, levels: dict[float, int]) -> list[Ite
         if lvl and len(lines) <= 3:
             items.append(Item("heading", b.page, text=text, level=lvl))
             continue
+        # A short standalone line in capitals ("PRIMEIRA NOITE", "A MANHÃ") is a section title.
+        # This is the main signal for OCR pages, which carry no font size/weight information.
+        if len(groups) == 1 and len(lines) <= 2 and _is_caps_title(text):
+            items.append(Item("heading", b.page, text=text, level=1 if b.ocr else 2))
+            continue
+        # Tesseract sometimes glues a title line to the paragraph below it.
+        if b.ocr and len(lines) > 1 and _is_caps_title(lines[0].text):
+            items.append(Item("heading", b.page, text=lines[0].text, level=1))
+            lines = lines[1:]
         # A short, fully bold block at body size reads as a minor heading.
         if (
             len(groups) == 1
@@ -582,6 +619,7 @@ def convert_pdf(pdf_path: Path, out_dir: Path, opts: ConversionOptions, progress
         pages: list[list[RawBlock]] = []
         heights: list[float] = []
         low_text_pages: list[int] = []
+        garbled_pages = 0
         columned_pages = 0
         ocr_pages = 0
         for i in range(page_count):
@@ -589,7 +627,12 @@ def convert_pdf(pdf_path: Path, out_dir: Path, opts: ConversionOptions, progress
             page_no = i + 1
             text_blocks = _extract_text_blocks(page, page_no)
             chars = sum(len(ln.text) for b in text_blocks for ln in b.lines)
-            scanned = chars < opts.ocr_min_chars_per_page
+            garbled = chars >= opts.ocr_min_chars_per_page and not _is_readable(text_blocks)
+            if garbled:
+                # Text layer exists but is unusable (fonts without a Unicode mapping): treat as a scan.
+                garbled_pages += 1
+                text_blocks = []
+            scanned = garbled or chars < opts.ocr_min_chars_per_page
             if scanned:
                 low_text_pages.append(page_no)
                 if opts.ocr:
@@ -635,9 +678,13 @@ def convert_pdf(pdf_path: Path, out_dir: Path, opts: ConversionOptions, progress
     needs_ocr = not opts.ocr and scanned_share >= 0.5
 
     warnings: list[str] = []
+    if garbled_pages and not opts.ocr:
+        warnings.append(
+            f"{garbled_pages} página(s) têm o texto embutido ilegível (fontes sem codificação de caracteres); use o OCR para recuperá-lo."
+        )
     if opts.ocr and ocr_pages:
         warnings.append(f"{ocr_pages} página(s) foram lidas por OCR; o texto pode conter erros de reconhecimento.")
-    elif low_text_pages and not opts.ocr:
+    elif low_text_pages and not opts.ocr and len(low_text_pages) > garbled_pages:
         warnings.append(f"{len(low_text_pages)} página(s) têm pouco ou nenhum texto extraível (possivelmente digitalizadas).")
     if columned_pages:
         warnings.append("O documento tem páginas em colunas; a ordem de leitura foi reconstruída e pode ter imperfeições.")
@@ -697,8 +744,20 @@ def read_pdf_info(pdf_path: Path) -> tuple[int, str | None, str | None, bool]:
         if doc.needs_pass:
             return doc.page_count, None, None, True
         meta = doc.metadata or {}
-        title = clean_text(meta.get("title") or "") or None
-        author = clean_text(meta.get("author") or "") or None
-        if title and (re.match(r"(?i)^(untitled|sem t[ií]tulo|microsoft (word|powerpoint))", title) or re.search(r"\.(docx?|pdf|tex|odt)$", title, re.I)):
-            title = None
-        return doc.page_count, title, author, False
+        return doc.page_count, clean_title(meta.get("title")), clean_text(_unescape_octal(meta.get("author") or "")) or None, False
+
+
+def _unescape_octal(text: str) -> str:
+    """Some producers leave PDF string escapes in metadata, e.g. 'Fi\\363dor' for 'Fiódor'."""
+    return re.sub(r"\\([0-7]{3})", lambda m: chr(int(m.group(1), 8)), text)
+
+
+def clean_title(raw: str | None) -> str | None:
+    """Turn metadata titles such as '(Microsoft Word - Fi\\363dor - Noites brancas.doc)' into
+    'Fiódor - Noites brancas'; return None for placeholders like 'Untitled'."""
+    title = clean_text(_unescape_octal(raw or "")).strip("() ")
+    title = re.sub(r"(?i)^microsoft (word|powerpoint|excel)\s*-\s*", "", title)
+    title = re.sub(r"(?i)\.(docx?|odt|rtf|pptx?|tex|pdf)$", "", title).strip()
+    if not title or re.match(r"(?i)^(untitled|sem t[ií]tulo|document\d*|documento\d*)$", title):
+        return None
+    return title[:300]
