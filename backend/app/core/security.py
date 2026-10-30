@@ -19,7 +19,7 @@ from app.core.config import get_settings
 _hasher = PasswordHasher(time_cost=2, memory_cost=32 * 1024, parallelism=1)
 
 # Used to keep login timing similar whether or not the e-mail exists.
-_DUMMY_HASH = _hasher.hash("bookflow-timing-equaliser")
+_DUMMY_HASH = _hasher.hash("pdbook-timing-equaliser")
 
 
 def hash_password(password: str) -> str:

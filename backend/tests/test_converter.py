@@ -23,7 +23,7 @@ def test_extracts_chapters_from_outline_and_strips_running_headers(tmp_path):
     assert not result.needs_ocr
     assert result.word_count > 300
     all_text = " ".join(b.get("text", "") for c in result.chapters for b in _blocks(out, c))
-    assert "Livro de Teste do BookFlow" not in all_text  # running header removed
+    assert "Livro de Teste do PDBook" not in all_text  # running header removed
     first = _blocks(out, result.chapters[0])
     assert first[0]["type"] == "heading"
     assert any(b["type"] == "image" for b in first)

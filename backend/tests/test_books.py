@@ -34,7 +34,7 @@ def test_upload_creates_pending_book_and_stores_original(client, user, tmp_path)
     book = r.json()
     assert book["status"] == "pending"
     assert book["title"] == "Livro de Teste"  # from PDF metadata
-    assert book["author"] == "Equipe BookFlow"
+    assert book["author"] == "Equipe PDBook"
     assert book["page_count"] >= 3
     assert book["job"]["status"] == "queued"
     for leaked in ("file_key", "content_key", "sha256"):

@@ -1,4 +1,4 @@
-# BookFlow API + worker image. Multi-arch: builds natively on ARM64 (OCI Ampere A1) and x86_64.
+# PDBook API + worker image. Multi-arch: builds natively on ARM64 (OCI Ampere A1) and x86_64.
 # Every Python dependency ships manylinux aarch64 wheels, so no compiler is needed.
 FROM python:3.12-slim-bookworm
 
@@ -12,21 +12,21 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-por tesseract-ocr-eng tini \
  && rm -rf /var/lib/apt/lists/*
 
-RUN groupadd --system --gid 10001 bookflow \
- && useradd --system --uid 10001 --gid bookflow --home-dir /app --shell /usr/sbin/nologin bookflow
+RUN groupadd --system --gid 10001 pdbook \
+ && useradd --system --uid 10001 --gid pdbook --home-dir /app --shell /usr/sbin/nologin pdbook
 
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-COPY --chown=bookflow:bookflow alembic.ini worker.py ./
-COPY --chown=bookflow:bookflow alembic ./alembic
-COPY --chown=bookflow:bookflow app ./app
+COPY --chown=pdbook:pdbook alembic.ini worker.py ./
+COPY --chown=pdbook:pdbook alembic ./alembic
+COPY --chown=pdbook:pdbook app ./app
 
-RUN mkdir -p /data/originals /data/converted /data/tmp && chown -R bookflow:bookflow /data
+RUN mkdir -p /data/originals /data/converted /data/tmp && chown -R pdbook:pdbook /data
 ENV UPLOAD_DIR=/data/originals CONVERTED_DIR=/data/converted TMP_DIR=/data/tmp TMPDIR=/data/tmp
 
-USER bookflow
+USER pdbook
 EXPOSE 8000
 
 ENTRYPOINT ["/usr/bin/tini", "--"]

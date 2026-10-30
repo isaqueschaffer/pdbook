@@ -1,4 +1,4 @@
-"""BookFlow RQ worker.
+"""PDBook RQ worker.
 
 Starts WORKER_CONCURRENCY worker processes. Process 0 listens to the text queue and the OCR queue;
 any extra processes only take text conversions, so at most one OCR job runs at a time.
@@ -28,9 +28,9 @@ from app.services.storage import ensure_dirs
 def run(index: int) -> None:
     settings = get_settings()
     setup_logging(settings.log_level)
-    os.environ["BOOKFLOW_FORKING_WORKER"] = "1"
+    os.environ["PDBOOK_FORKING_WORKER"] = "1"
     queues = [TEXT_QUEUE, OCR_QUEUE] if index == 0 and settings.ocr_enabled else [TEXT_QUEUE]
-    worker = Worker(queues, connection=get_redis(), name=f"bookflow-{socket.gethostname()}-{index}")
+    worker = Worker(queues, connection=get_redis(), name=f"pdbook-{socket.gethostname()}-{index}")
     # The scheduler is needed for retries with a delay; RQ elects a single scheduler across workers.
     worker.work(with_scheduler=True, logging_level=settings.log_level.upper())
 
@@ -39,7 +39,7 @@ def check() -> int:
     redis = get_redis()
     redis.ping()
     host = socket.gethostname()
-    mine = [w for w in Worker.all(connection=redis) if w.name.startswith(f"bookflow-{host}-")]
+    mine = [w for w in Worker.all(connection=redis) if w.name.startswith(f"pdbook-{host}-")]
     return 0 if mine else 1
 
 

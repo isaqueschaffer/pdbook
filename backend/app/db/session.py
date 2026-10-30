@@ -28,7 +28,7 @@ def build_engine(url: str) -> Engine:
         pool_recycle=settings.db_pool_recycle,
         pool_timeout=15,
         # prepare_threshold=None keeps psycopg compatible with Neon's PgBouncer (pooled URL).
-        connect_args={"prepare_threshold": None, "connect_timeout": 10, "application_name": "bookflow"},
+        connect_args={"prepare_threshold": None, "connect_timeout": 10, "application_name": "pdbook"},
     )
 
 

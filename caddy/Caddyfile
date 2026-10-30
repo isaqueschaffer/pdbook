@@ -1,4 +1,4 @@
-# BookFlow — Caddy reverse proxy.
+# PDBook — Caddy reverse proxy.
 # SITE_ADDRESS: your domain (e.g. leitura.exemplo.com) for automatic HTTPS via Let's Encrypt,
 # or ":80" to serve plain HTTP (local tests / before DNS is ready).
 {

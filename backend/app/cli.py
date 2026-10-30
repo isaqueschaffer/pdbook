@@ -84,7 +84,7 @@ def show_storage() -> int:
     finally:
         db.close()
     mb = 1024 * 1024
-    print(f"usado pelo BookFlow: {st.used_bytes / mb:.1f} MB de {st.limit_bytes / mb:.0f} MB")
+    print(f"usado pelo PDBook: {st.used_bytes / mb:.1f} MB de {st.limit_bytes / mb:.0f} MB")
     print(f"disco livre: {st.disk_free_bytes / mb:.0f} MB de {st.disk_total_bytes / mb:.0f} MB")
     print("ALERTA: armazenamento próximo do limite" if st.warn else "ok")
     return 1 if st.full else 0

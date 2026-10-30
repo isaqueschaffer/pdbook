@@ -26,13 +26,13 @@ Escolha **um**:
   ```bash
   mkdir -p ~/.config/rclone
   docker run --rm -it -v ~/.config/rclone:/config/rclone rclone/rclone:1.68 config
-  # .env: BACKUP_RCLONE_REMOTE=meuremote:bookflow-backups
+  # .env: BACKUP_RCLONE_REMOTE=meuremote:pdbook-backups
   ```
   Para o Object Storage da OCI, crie um bucket *Standard* (confira o selo Always Free) e um
   *Customer Secret Key* (compatível com S3). No rclone, use o tipo `s3`, provider `Other`, endpoint
   `https://<namespace>.compat.objectstorage.<regiao>.oraclecloud.com`.
 - **rsync** (`BACKUP_RSYNC_TARGET`): outro servidor ou computador acessível por SSH com chave, por
-  exemplo `usuario@casa.exemplo.com:/backups/bookflow`.
+  exemplo `usuario@casa.exemplo.com:/backups/pdbook`.
 
 ## Executar e agendar
 
@@ -53,18 +53,18 @@ O script faz, em ordem:
 Cron diário:
 
 ```cron
-30 3 * * * cd /opt/bookflow && ./scripts/backup.sh >> /var/log/bookflow-backup.log 2>&1
+30 3 * * * cd /opt/pdbook && ./scripts/backup.sh >> /var/log/pdbook-backup.log 2>&1
 ```
 
 ## Verificar se os backups estão sendo concluídos
 
 - `cat backups/last-success` mostra o carimbo do último backup **verificado no destino**. O arquivo só
   é escrito depois da conferência de checksums.
-- `tail -n 20 /var/log/bookflow-backup.log` deve terminar em `concluído e verificado no destino`.
+- `tail -n 20 /var/log/pdbook-backup.log` deve terminar em `concluído e verificado no destino`.
 - `./scripts/restore.sh --list` lista o que existe no destino.
 - Alerta simples por cron, com aviso se o último backup tiver mais de 2 dias:
   ```cron
-  0 9 * * * find /opt/bookflow/backups/last-success -mmin -2880 | grep -q . || echo "BookFlow: backup atrasado" | logger -t bookflow
+  0 9 * * * find /opt/pdbook/backups/last-success -mmin -2880 | grep -q . || echo "PDBook: backup atrasado" | logger -t pdbook
   ```
 - Faça um **teste de restauração** periódico. Por exemplo, uma vez por mês, restaure num branch do Neon
   e numa pasta temporária.

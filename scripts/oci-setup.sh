@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Prepares a fresh OCI Ampere A1 VM (Ubuntu 22.04/24.04 or Oracle Linux 8/9, ARM64) for BookFlow.
+# Prepares a fresh OCI Ampere A1 VM (Ubuntu 22.04/24.04 or Oracle Linux 8/9, ARM64) for PDBook.
 # Installs Docker Engine + Compose plugin, opens ports 80/443 in the host firewall and creates the
 # data directory. It does NOT format disks and does NOT touch your OCI account.
 #
-#   sudo DATA_DIR=/mnt/bookflow-data ./scripts/oci-setup.sh
+#   sudo DATA_DIR=/mnt/pdbook-data ./scripts/oci-setup.sh
 set -euo pipefail
 
-DATA_DIR="${DATA_DIR:-/mnt/bookflow-data}"
+DATA_DIR="${DATA_DIR:-/mnt/pdbook-data}"
 APP_UID=10001   # user inside the backend image
 
 log() { printf '\n==> %s\n' "$*"; }

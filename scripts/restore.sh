@@ -20,7 +20,7 @@ fi
 
 stamp="${1:?uso: restore.sh <stamp> [--with-db] | --list}"
 with_db="${2:-}"
-work="$(mktemp -d /var/tmp/bookflow-restore.XXXX)"
+work="$(mktemp -d /var/tmp/pdbook-restore.XXXX)"
 trap 'rm -rf "$work"' EXIT
 
 echo "==> Baixando backup $stamp"

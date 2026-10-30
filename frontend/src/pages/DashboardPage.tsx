@@ -63,7 +63,7 @@ export function DashboardPage() {
               </Link>
             }
           >
-            Envie um PDF e o BookFlow o transforma em um livro com fonte ajustável, temas de leitura e marcadores.
+            Envie um PDF e o PDBook o transforma em um livro com fonte ajustável, temas de leitura e marcadores.
           </EmptyState>
         </Card>
       ) : (

@@ -10,7 +10,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-_TMP = Path(tempfile.mkdtemp(prefix="bookflow-tests-"))
+_TMP = Path(tempfile.mkdtemp(prefix="pdbook-tests-"))
 os.environ.update(
     {
         "ENVIRONMENT": "test",
@@ -54,7 +54,7 @@ from app.db.base import Base  # noqa: E402
 from app.db.session import get_engine  # noqa: E402
 from app.main import app  # noqa: E402
 
-CSRF = {"X-Requested-With": "BookFlow"}
+CSRF = {"X-Requested-With": "PDBook"}
 
 
 @pytest.fixture(autouse=True)

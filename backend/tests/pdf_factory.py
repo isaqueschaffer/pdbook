@@ -30,7 +30,7 @@ def make_text_pdf(path: Path, chapters: list[tuple[str, int]] | None = None, *, 
     n = 0
     for c, (title, paragraphs) in enumerate(chapters):
         n += 1
-        page = _page(doc, "Livro de Teste do BookFlow", n)
+        page = _page(doc, "Livro de Teste do PDBook", n)
         outline.append([1, title, n])
         page.insert_textbox(pymupdf.Rect(50, 60, 370, 100), title, fontsize=20, fontname="hebo")
         y = 110
@@ -41,7 +41,7 @@ def make_text_pdf(path: Path, chapters: list[tuple[str, int]] | None = None, *, 
             y += 125
             if y > 480 and p + 1 < paragraphs:
                 n += 1
-                page = _page(doc, "Livro de Teste do BookFlow", n)
+                page = _page(doc, "Livro de Teste do PDBook", n)
                 y = 60
         if image and c == 0:
             pix = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 200, 150), False)
@@ -49,13 +49,13 @@ def make_text_pdf(path: Path, chapters: list[tuple[str, int]] | None = None, *, 
             page.insert_image(pymupdf.Rect(110, min(y, 420), 310, min(y, 420) + 150), pixmap=pix)
     if toc:
         doc.set_toc(outline)
-    doc.set_metadata({"title": "Livro de Teste", "author": "Equipe BookFlow"})
+    doc.set_metadata({"title": "Livro de Teste", "author": "Equipe PDBook"})
     doc.save(path)
     doc.close()
     return path
 
 
-def make_scanned_pdf(path: Path, text: str = "Documento digitalizado para teste de OCR do BookFlow.") -> Path:
+def make_scanned_pdf(path: Path, text: str = "Documento digitalizado para teste de OCR do PDBook.") -> Path:
     """A page that only contains a picture of text (no text layer)."""
     src = pymupdf.open()
     p = src.new_page(width=420, height=595)

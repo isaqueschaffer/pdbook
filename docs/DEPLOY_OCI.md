@@ -1,6 +1,6 @@
 # Implantação na Oracle Cloud (Always Free) — passo a passo
 
-Este guia leva o BookFlow a uma VM **Ampere A1 (ARM64)** do plano **Always Free** da OCI, com o
+Este guia leva o PDBook a uma VM **Ampere A1 (ARM64)** do plano **Always Free** da OCI, com o
 banco no **Neon** e HTTPS automático pelo Caddy. Nada aqui exige recursos pagos.
 
 > **Regras de ouro**
@@ -19,7 +19,7 @@ Se já houver uma VM `VM.Standard.A1.Flex` em execução, anote o IP público e 
 **Criar uma nova:**
 
 1. *Compute → Instances → Create instance*.
-2. **Name:** `bookflow`.
+2. **Name:** `pdbook`.
 3. **Placement:** use qualquer Availability Domain. Se aparecer *Out of capacity*, veja a seção
    "Sem capacidade" mais abaixo.
 4. **Image:** *Change image* → **Canonical Ubuntu 24.04** (ou 22.04). Escolha a variante **aarch64**,
@@ -51,7 +51,7 @@ para 6379 (Redis), 8000 (API) ou 5432.
 
 1. Tente **outro Availability Domain** ou outro *Fault Domain* no mesmo formulário.
 2. Tente um shape menor, como **1 OCPU / 6 GB**, e aumente depois (*Edit → Shape*) quando houver capacidade.
-   O BookFlow roda com 1 OCPU; reduza `WORKER_CPUS=0.8`, `WORKER_MEM_LIMIT=2g`, `API_WORKERS=1`.
+   O PDBook roda com 1 OCPU; reduza `WORKER_CPUS=0.8`, `WORKER_MEM_LIMIT=2g`, `API_WORKERS=1`.
 3. Repita a tentativa em outros horários. A capacidade é liberada continuamente.
 4. Último recurso: **VM.Standard.E2.1.Micro** (AMD, 1 GB RAM, Always Free). Com ela, desative o OCR
    (`OCR_ENABLED=false`), use `API_WORKERS=1`, `WORKER_MEMORY_LIMIT_MB=600`, `WORKER_MEM_LIMIT=700m`,
@@ -83,10 +83,10 @@ nproc; free -h; df -h /; lsblk
 
 ```bash
 sudo apt-get update && sudo apt-get install -y git     # Oracle Linux: sudo dnf install -y git
-sudo git clone <URL-DO-SEU-REPOSITORIO> /opt/bookflow
-sudo chown -R "$USER" /opt/bookflow
-cd /opt/bookflow
-sudo DATA_DIR=/mnt/bookflow-data ./scripts/oci-setup.sh
+sudo git clone <URL-DO-SEU-REPOSITORIO> /opt/pdbook
+sudo chown -R "$USER" /opt/pdbook
+cd /opt/pdbook
+sudo DATA_DIR=/mnt/pdbook-data ./scripts/oci-setup.sh
 exit    # saia e entre de novo para o grupo "docker" valer
 ```
 
@@ -107,7 +107,7 @@ Ele **não formata discos**.
 O plano Always Free inclui armazenamento em bloco gratuito, somando boot e block volumes. Confira
 o total da sua conta.
 
-1. *Storage → Block Volumes → Create Block Volume*: nome `bookflow-data`, mesmo AD da VM, tamanho
+1. *Storage → Block Volumes → Create Block Volume*: nome `pdbook-data`, mesmo AD da VM, tamanho
    **50 GB** (ajuste ao que sobra da franquia), *Volume performance*: Balanced.
 2. Na instância: *Attached block volumes → Attach block volume* → selecione o volume →
    *Attachment type*: **Paravirtualized**, que não exige comandos iSCSI.
@@ -115,12 +115,12 @@ o total da sua conta.
 
 ```bash
 lsblk                                # identifique o novo disco, ex.: /dev/sdb (sem partições)
-sudo mkfs.ext4 -L bookflow /dev/sdb  # SOMENTE em um volume novo e vazio — apaga o conteúdo!
-sudo mkdir -p /mnt/bookflow-data
-echo 'LABEL=bookflow /mnt/bookflow-data ext4 defaults,_netdev,nofail 0 2' | sudo tee -a /etc/fstab
-sudo mount -a && df -h /mnt/bookflow-data
-sudo mkdir -p /mnt/bookflow-data/{originals,converted,tmp}
-sudo chown -R 10001:10001 /mnt/bookflow-data
+sudo mkfs.ext4 -L pdbook /dev/sdb  # SOMENTE em um volume novo e vazio — apaga o conteúdo!
+sudo mkdir -p /mnt/pdbook-data
+echo 'LABEL=pdbook /mnt/pdbook-data ext4 defaults,_netdev,nofail 0 2' | sudo tee -a /etc/fstab
+sudo mount -a && df -h /mnt/pdbook-data
+sudo mkdir -p /mnt/pdbook-data/{originals,converted,tmp}
+sudo chown -R 10001:10001 /mnt/pdbook-data
 ```
 
 Ajuste `STORAGE_LIMIT_MB` no `.env` para algo abaixo do tamanho do volume, por exemplo 45000 para 50 GB.
@@ -131,11 +131,11 @@ Ajuste `STORAGE_LIMIT_MB` no `.env` para algo abaixo do tamanho do volume, por e
 
 1. Em <https://console.neon.tech>, crie um projeto (*Free plan*). Escolha a região mais próxima da VM.
    Ex.: VM em `sa-saopaulo-1` → Neon em `aws-sa-east-1`.
-2. Crie o banco `bookflow`, ou use o padrão `neondb` e ajuste as URLs.
+2. Crie o banco `pdbook`, ou use o padrão `neondb` e ajuste as URLs.
 3. *Connect*: copie **duas** connection strings:
    - **Pooled** (host com `-pooler`) → `DATABASE_URL`
    - **Direct** (sem `-pooler`, opção *Connection pooling* desligada) → `DATABASE_MIGRATION_URL`
-4. Mantenha `sslmode=require`. O BookFlow converte `postgresql://` para o driver psycopg automaticamente.
+4. Mantenha `sslmode=require`. O PDBook converte `postgresql://` para o driver psycopg automaticamente.
 
 O plano gratuito do Neon suspende o banco quando ocioso. A primeira requisição depois disso leva
 alguns segundos, e o pool da aplicação já está preparado para isso (`pool_pre_ping`, `pool_recycle`).
@@ -145,7 +145,7 @@ alguns segundos, e o pool da aplicação já está preparado para isso (`pool_pr
 ## 6. Variáveis de ambiente e migrations
 
 ```bash
-cd /opt/bookflow
+cd /opt/pdbook
 cp .env.example .env
 openssl rand -hex 32     # -> SESSION_SECRET
 openssl rand -hex 24     # -> REDIS_PASSWORD (repita o valor dentro de REDIS_URL)
@@ -222,14 +222,14 @@ Veja [BACKUP.md](BACKUP.md). Resumo:
 ./scripts/restore.sh 20260101T033000Z  [--with-db]
 ```
 
-Agende no cron: `30 3 * * * cd /opt/bookflow && ./scripts/backup.sh >> /var/log/bookflow-backup.log 2>&1`
+Agende no cron: `30 3 * * * cd /opt/pdbook && ./scripts/backup.sh >> /var/log/pdbook-backup.log 2>&1`
 
 ---
 
 ## 11. Atualizar a aplicação com segurança
 
 ```bash
-cd /opt/bookflow
+cd /opt/pdbook
 ./scripts/deploy.sh
 ```
 

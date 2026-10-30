@@ -22,7 +22,7 @@ def enforce(bucket: str, identity: str, limit: int, window: int) -> None:
     if limit <= 0:
         return
     digest = hashlib.sha256(identity.encode()).hexdigest()[:24]
-    key = f"bookflow:rl:{bucket}:{digest}"
+    key = f"pdbook:rl:{bucket}:{digest}"
     try:
         redis = get_redis()
         count = redis.incr(key)

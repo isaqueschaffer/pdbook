@@ -25,7 +25,7 @@ export class ApiError extends Error {
 }
 
 // Sent with every request; the API rejects state-changing requests without it (CSRF protection).
-const CSRF_HEADERS = { "X-Requested-With": "BookFlow" };
+const CSRF_HEADERS = { "X-Requested-With": "PDBook" };
 
 function messageFrom(status: number, body: unknown): string {
   if (body && typeof body === "object" && "detail" in body) {
@@ -56,7 +56,7 @@ export async function request<T>(path: string, init: RequestInit & { json?: unkn
   if (res.status === 204) return undefined as T;
   const body = res.headers.get("content-type")?.includes("application/json") ? await res.json().catch(() => null) : null;
   if (!res.ok) {
-    if (res.status === 401) window.dispatchEvent(new CustomEvent("bookflow:unauthorized"));
+    if (res.status === 401) window.dispatchEvent(new CustomEvent("pdbook:unauthorized"));
     throw new ApiError(res.status, messageFrom(res.status, body), body);
   }
   return body as T;

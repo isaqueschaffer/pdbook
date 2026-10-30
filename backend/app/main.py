@@ -15,17 +15,17 @@ from app.core.config import get_settings
 from app.core.logging import setup_logging
 from app.services.storage import ensure_dirs
 
-log = logging.getLogger("bookflow")
+log = logging.getLogger("pdbook")
 
 UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 CSRF_HEADER = "x-requested-with"
-CSRF_VALUE = "BookFlow"
+CSRF_VALUE = "PDBook"
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     ensure_dirs()
-    log.info("BookFlow API started (%s)", get_settings().environment)
+    log.info("PDBook API started (%s)", get_settings().environment)
     yield
 
 
@@ -34,7 +34,7 @@ def create_app() -> FastAPI:
     setup_logging(settings.log_level)
     docs = settings.environment != "production"
     app = FastAPI(
-        title="BookFlow API",
+        title="PDBook API",
         version="1.0.0",
         lifespan=lifespan,
         docs_url="/api/docs" if docs else None,

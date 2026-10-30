@@ -132,7 +132,7 @@ export function ImportPage() {
           <span className="text-sm">
             <span className="font-medium">Reconhecer texto com OCR</span>
             <span className="mt-0.5 block text-ink-soft">
-              Para documentos digitalizados (fotos ou scans de páginas). É mais lento e processa um documento por vez. Se você não marcar, o BookFlow avisa
+              Para documentos digitalizados (fotos ou scans de páginas). É mais lento e processa um documento por vez. Se você não marcar, o PDBook avisa
               quando o PDF parecer digitalizado e você poderá ativar o OCR depois.
             </span>
           </span>

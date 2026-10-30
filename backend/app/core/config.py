@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     # --- Sessions ---
     session_secret: str = Field(validation_alias=AliasChoices("SESSION_SECRET", "JWT_SECRET"))
     session_ttl_days: int = Field(30, ge=1, le=365)
-    session_cookie_name: str = "bookflow_session"
+    session_cookie_name: str = "pdbook_session"
     cookie_secure: bool | None = None  # defaults to True in production
 
     # --- Redis / RQ ---

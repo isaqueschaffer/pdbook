@@ -34,8 +34,8 @@ export function SessionWatcher() {
         qc.setQueryData(ME_KEY, null);
       }
     };
-    window.addEventListener("bookflow:unauthorized", onUnauthorized);
-    return () => window.removeEventListener("bookflow:unauthorized", onUnauthorized);
+    window.addEventListener("pdbook:unauthorized", onUnauthorized);
+    return () => window.removeEventListener("pdbook:unauthorized", onUnauthorized);
   }, [qc]);
   return null;
 }

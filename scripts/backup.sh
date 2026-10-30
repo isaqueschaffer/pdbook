@@ -6,7 +6,7 @@
 # A copy on the same disk is NOT a backup; the local staging copy is deleted at the end.
 #
 #   ./scripts/backup.sh
-# Cron (daily 03:30):  30 3 * * * cd /opt/bookflow && ./scripts/backup.sh >> /var/log/bookflow-backup.log 2>&1
+# Cron (daily 03:30):  30 3 * * * cd /opt/pdbook && ./scripts/backup.sh >> /var/log/pdbook-backup.log 2>&1
 set -euo pipefail
 cd "$(dirname "$0")/.."
 set -a; . ./.env; set +a
@@ -15,7 +15,7 @@ DATA_DIR="${DATA_DIR:?DATA_DIR não definido}"
 REMOTE="${BACKUP_RCLONE_REMOTE:-}"
 RSYNC_TARGET="${BACKUP_RSYNC_TARGET:-}"
 KEEP_DAYS="${BACKUP_KEEP_DAYS:-30}"
-STAGING_ROOT="${BACKUP_STAGING_DIR:-/var/tmp/bookflow-backup}"
+STAGING_ROOT="${BACKUP_STAGING_DIR:-/var/tmp/pdbook-backup}"
 DB_URL="${DATABASE_MIGRATION_URL:-$DATABASE_URL}"   # pg_dump needs the direct (non-pooled) Neon endpoint
 RCLONE_CONF_DIR="${RCLONE_CONFIG_DIR:-$HOME/.config/rclone}"
 

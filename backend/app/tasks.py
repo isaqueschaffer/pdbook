@@ -25,7 +25,7 @@ def _apply_memory_limit() -> None:
     """Cap the address space of the forked RQ work-horse so a pathological PDF raises MemoryError
     instead of pushing the whole VM into swap. Only applied inside the forked horse."""
     limit_mb = get_settings().worker_memory_limit_mb
-    if not limit_mb or os.environ.get("BOOKFLOW_FORKING_WORKER") != "1":
+    if not limit_mb or os.environ.get("PDBOOK_FORKING_WORKER") != "1":
         return
     try:
         import resource

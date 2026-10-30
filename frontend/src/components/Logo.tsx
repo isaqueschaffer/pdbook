@@ -6,7 +6,7 @@ export function Logo({ className = "" }: { className?: string }) {
         <path d="M8 9.5c2.8-.9 5.4-.6 8 1v13c-2.6-1.6-5.2-1.9-8-1z" fill="var(--accent-ink)" />
         <path d="M24 9.5c-2.8-.9-5.4-.6-8 1v13c2.6-1.6 5.2-1.9 8-1z" fill="var(--accent-ink)" opacity=".7" />
       </svg>
-      <span className="text-[17px]">BookFlow</span>
+      <span className="text-[17px]">PDBook</span>
     </span>
   );
 }

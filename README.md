@@ -1,4 +1,4 @@
-# BookFlow
+# PDBook
 
 Transforma PDFs em uma experiência de leitura de livro digital, com:
 
@@ -106,7 +106,7 @@ Requisitos: Python 3.12, Node 22+, Docker (só para o Redis).
 
 ```bash
 # Redis só para desenvolvimento
-docker run -d --name bookflow-redis -p 127.0.0.1:6379:6379 redis:7.4-alpine
+docker run -d --name pdbook-redis -p 127.0.0.1:6379:6379 redis:7.4-alpine
 
 # Backend
 cd backend
@@ -178,7 +178,7 @@ docker compose run --rm backend python -m app.cli check-config
 - **Senhas** em Argon2id. **Sessões** opacas (256 bits) em cookie `HttpOnly`, `SameSite=Lax` e `Secure`
   em produção, com `path=/api`. O banco guarda só o HMAC do token. A expiração é deslizante, e a sessão
   pode ser revogada no logout, na troca de senha ou em "sair de todos".
-- **CSRF:** toda requisição que altera estado exige o cabeçalho `X-Requested-With: BookFlow`, que outro
+- **CSRF:** toda requisição que altera estado exige o cabeçalho `X-Requested-With: PDBook`, que outro
   site não consegue enviar sem passar pelo CORS.
 - **Rate limiting** em Redis: login (por IP e por conta), cadastro, upload e reautenticação.
 - **Controle de acesso:** todo acesso a livro, arquivo, imagem, capítulo, progresso ou marcador verifica
