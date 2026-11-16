@@ -15,6 +15,7 @@ no **Neon PostgreSQL**.
 - **App para celular** (Android, com Capacitor): [docs/APP.md](docs/APP.md). No app, o PDF, a conversão e
   o OCR ficam no aparelho e funcionam offline; o servidor guarda a conta e sincroniza o progresso, os
   marcadores e as preferências.
+  Estado do projeto, testes e pendências: [docs/APP_STATUS.md](docs/APP_STATUS.md).
 
 ---
 

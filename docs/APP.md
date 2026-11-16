@@ -1,5 +1,7 @@
 # PDBook no celular (app com Capacitor)
 
+> Estado do projeto, resultados dos testes e o que falta para lançar: [APP_STATUS.md](APP_STATUS.md).
+
 O app usa o mesmo código React do site, empacotado como aplicativo nativo pelo
 [Capacitor](https://capacitorjs.com). A diferença está em **onde cada coisa acontece**:
 
@@ -146,6 +148,11 @@ cd .. && backend/.venv/Scripts/python -X utf8 frontend/scripts/compare-converter
 
 O relatório mostra, por PDF, os capítulos, os blocos e a semelhança do texto de cada lado, além das
 primeiras diferenças encontradas.
+
+### Teste de ponta a ponta
+
+`npm run test:e2e` simula dois celulares contra um servidor PDBook (17 passos, do cadastro ao OCR
+offline). Como subir o servidor local para ele: [APP_STATUS.md](APP_STATUS.md#teste-de-ponta-a-ponta).
 
 ### Teste de paridade do conversor
 
