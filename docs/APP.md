@@ -111,6 +111,17 @@ O app ainda não foi testado no iOS.
   - `sync.ts`: fila de envio e sincronização;
   - `library.ts`: implementação local da API usada pelas telas.
 
+### Comparar os conversores com seus próprios PDFs
+
+```bash
+backend/.venv/Scripts/python frontend/scripts/compare-converters.py server <pasta-com-pdfs>
+cd frontend && PARITY_DIR=<pasta-com-pdfs> npx vitest run src/device/convert/compare.node.test.ts
+cd .. && backend/.venv/Scripts/python -X utf8 frontend/scripts/compare-converters.py report <pasta-com-pdfs>
+```
+
+O relatório mostra, por PDF, os capítulos, os blocos e a semelhança do texto de cada lado, além das
+primeiras diferenças encontradas.
+
 ### Teste de paridade do conversor
 
 `src/device/convert/parity.node.test.ts` converte PDFs de teste com o conversor do celular e exige o
@@ -131,11 +142,12 @@ Uma mudança que altere a estrutura convertida deve incrementar `CONVERTER_VERSI
 - **Desempenho no celular:** PDFs grandes levam mais tempo que no servidor, e o OCR leva alguns
   segundos por página. A conversão pausa se o app for para segundo plano e continua ao voltar. Se o
   app for fechado, ela recomeça na próxima abertura.
-- **PDFs reais podem diferir um pouco do servidor.** O pdf.js e o PyMuPDF agrupam o texto em linhas
-  de forma ligeiramente diferente. Nos PDFs de teste o resultado é idêntico, mas em documentos com
-  layout complexo algum parágrafo pode quebrar em lugar diferente. Isso só afeta marcadores entre um
-  livro convertido no servidor e o mesmo arquivo convertido no celular, e nesse caso o leitor usa a
-  página.
+- **PDFs reais diferem um pouco do servidor.** O pdf.js e o PyMuPDF leem as linhas de forma ligeiramente
+  diferente. Medido com `scripts/compare-converters.py` (veja abaixo): num artigo do arXiv, no livro
+  Pro Git (501 páginas) e num manual escaneado de 412 páginas, os capítulos batem em 100% nos livros com
+  sumário, e o texto é de 95% a 99% igual. Isso só afeta marcadores entre um livro convertido no servidor
+  e o mesmo arquivo convertido no app; entre celulares o resultado é idêntico (mesmo código). Quando não
+  batem, o leitor abre pela página.
 - **Detecção de logos repetidos:** o servidor compara os objetos internos do PDF; o celular compara uma
   "impressão digital" da imagem (tamanho + miniatura 8×8).
 - **Espaço:** os PDFs ocupam o armazenamento do celular. Use "Remover deste aparelho" para liberar

@@ -95,7 +95,7 @@ export function linesFromRuns(runs: Run[]): Line[] {
     else rows.push([r]);
   }
   const lines: Line[] = [];
-  for (const row of rows) {
+  for (const row of joinScripts(rows)) {
     row.sort((a, b) => a.x0 - b.x0);
     let seg: Run[] = [];
     const flush = () => {
@@ -110,6 +110,38 @@ export function linesFromRuns(runs: Run[]): Line[] {
     flush();
   }
   return lines.filter((l) => l.text);
+}
+
+/** Superscripts and subscripts (footnote marks, "x²") sit on their own baseline. Like MuPDF, keep
+ * them in the line they belong to: smaller text whose baseline falls inside the neighbouring row. */
+function joinScripts(rows: Run[][]): Run[][] {
+  const box = (row: Run[]) => ({
+    size: Math.max(...row.map((r) => r.size)),
+    top: Math.min(...row.map((r) => r.top)),
+    bottom: Math.max(...row.map((r) => r.bottom)),
+    baseline: row.reduce((a, r) => (r.size > a.size ? r : a), row[0]).baseline,
+    x0: Math.min(...row.map((r) => r.x0)),
+    x1: Math.max(...row.map((r) => r.x1)),
+  });
+  const out: Run[][] = [];
+  for (const row of rows) {
+    const prev = out[out.length - 1];
+    if (prev) {
+      const a = box(prev); // above
+      const b = box(row); // below
+      const overlaps = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0) > -Math.max(a.size, b.size);
+      // Only short fragments: whole lines of uneven size (scans' text layers) must stay apart.
+      const short = (r: Run[]) => r.length <= 4 && r.reduce((n, x) => n + x.text.trim().length, 0) <= 8;
+      const superscript = short(prev) && a.size < b.size * 0.85 && a.baseline > b.top && a.baseline < b.baseline;
+      const subscript = short(row) && b.size < a.size * 0.85 && b.baseline > a.baseline && b.top < a.bottom;
+      if (overlaps && (superscript || subscript)) {
+        prev.push(...row);
+        continue;
+      }
+    }
+    out.push(row);
+  }
+  return out;
 }
 
 function makeLine(seg: Run[]): Line {

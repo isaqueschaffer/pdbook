@@ -26,7 +26,7 @@ import {
 import { encodeImage, imagePlacements, pageSize, readToc, textBlocks } from "./extract";
 
 /** Bump when a change alters the converted structure (block boundaries, chapters). */
-export const CONVERTER_VERSION = 1;
+export const CONVERTER_VERSION = 2;
 
 /** content_version shared by every device that converts the same file the same way. */
 export const deviceContentVersion = (ocr: boolean) => CONVERTER_VERSION * 2 + (ocr ? 1 : 0);

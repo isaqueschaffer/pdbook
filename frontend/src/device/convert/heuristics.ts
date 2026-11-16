@@ -15,6 +15,8 @@ export const PAGE_NUMBER_RE = /^\W*((p(á|a)g(ina)?|page|p\.)\s*)?([0-9]{1,4}|[i
 // eslint-disable-next-line no-control-regex
 const CONTROL_RE = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f­​﻿]/g;
 const SPACE_RE = /\s+/g;
+// Private Use Area: icon-font glyphs (warning signs, bullets) that have no meaning as text.
+const PRIVATE_USE_RE = /[-]/g;
 
 export interface Line {
   text: string;
@@ -86,7 +88,7 @@ export const hasAlpha = (text: string) => /\p{L}/u.test(text);
 // Text helpers
 
 export function cleanText(text: string): string {
-  return text.normalize("NFC").replace(CONTROL_RE, "").replace(SPACE_RE, " ").trim();
+  return text.normalize("NFC").replace(CONTROL_RE, "").replace(PRIVATE_USE_RE, "").replace(SPACE_RE, " ").trim();
 }
 
 export function joinLines(parts: string[]): string {
@@ -138,6 +140,9 @@ export function fold(text: string): string {
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 }
+
+/** Folded heading without its section number: "2.1 Attention" matches the outline's "Attention". */
+export const foldTitle = (text: string) => fold(text).replace(/^(\d+ )+/, "");
 
 /** Lower-case and strip accents keeping a 1:1 character mapping (search offsets stay valid). */
 export function foldSearch(text: string): string {
@@ -321,14 +326,14 @@ function splitPointsFromToc(toc: TocEntry[], items: Item[], pageCount: number): 
   const points: SplitPoint[] = [];
   let last = -1;
   for (const [lvl, title, page] of chosen) {
-    const folded = fold(title);
+    const folded = foldTitle(title);
     let idx: number | null = null;
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
       if (it.page < page || i <= last) continue;
       if (it.page > page) break;
-      const f = fold(it.text);
-      if (it.type === "heading" && folded && (f.startsWith(folded.slice(0, 40)) || folded.startsWith(f.slice(0, 40) || "\0"))) {
+      const head = it.type === "heading" ? foldTitle(it.text) : "";
+      if (head && folded && (head.startsWith(folded.slice(0, 40)) || folded.startsWith(head.slice(0, 40)))) {
         idx = i;
         break;
       }

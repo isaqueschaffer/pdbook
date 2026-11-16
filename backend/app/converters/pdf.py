@@ -45,6 +45,9 @@ PAGE_NUMBER_RE = re.compile(
 )
 CONTROL_RE = re.compile(r"[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f­​﻿]")
 SPACE_RE = re.compile(r"\s+")
+# Private Use Area: icon-font glyphs (warning signs, bullets) that have no meaning as text.
+PRIVATE_USE_RE = re.compile(r"[-]")
+SECTION_NUMBER_RE = re.compile(r"^(\d+ )+")  # applied to folded text, where "2.1." became "2 1 "
 
 
 class ConversionError(Exception):
@@ -146,7 +149,7 @@ ProgressCallback = Callable[[int], None]
 
 def clean_text(text: str) -> str:
     text = unicodedata.normalize("NFC", text)
-    text = CONTROL_RE.sub("", text)
+    text = PRIVATE_USE_RE.sub("", CONTROL_RE.sub("", text))
     return SPACE_RE.sub(" ", text).strip()
 
 
@@ -198,6 +201,12 @@ def _norm_running(text: str) -> str:
     return re.sub(r"\d+", "#", text.lower()).strip()
 
 
+def _fold_title(text: str) -> str:
+    """Folded heading without its section number: "2.1 Attention" and the outline's "Attention"
+    are the same title."""
+    return SECTION_NUMBER_RE.sub("", _fold(text))
+
+
 def _fold(text: str) -> str:
     text = unicodedata.normalize("NFKD", text.lower())
     return re.sub(r"[^a-z0-9]+", " ", "".join(c for c in text if not unicodedata.combining(c))).strip()
@@ -236,6 +245,31 @@ def _extract_text_blocks(page: pymupdf.Page, page_no: int) -> list[RawBlock]:
             rb.lines.append(Line(text, *ln["bbox"], size=weights.most_common(1)[0][0], bold=bold_chars / total > 0.6))
         if rb.lines:
             blocks.append(rb)
+    # MuPDF's own blocks vary by producer (some PDFs put every line in a block of its own, which
+    # turned each line into a paragraph). Regroup the lines geometrically, exactly as the app does
+    # (groupBlocks in frontend/src/device/convert/extract.ts), so both sides build the same blocks.
+    return _group_blocks([ln for b in blocks for ln in b.lines], page_no)
+
+
+def _group_blocks(lines: list[Line], page_no: int) -> list[RawBlock]:
+    """Consecutive lines that overlap horizontally and sit close together form a block."""
+    blocks: list[RawBlock] = []
+    for ln in sorted(lines, key=lambda l: (l.y0, l.x0)):
+        target: RawBlock | None = None
+        for b in blocks:
+            last = b.lines[-1]
+            lh = max(last.y1 - last.y0, 1.0)
+            gap = ln.y0 - last.y1
+            overlap = min(ln.x1, b.x1) - max(ln.x0, b.x0)
+            if gap < lh * 0.9 and gap > -lh * 0.5 and overlap > 0 and (target is None or last.y1 > target.lines[-1].y1):
+                target = b
+        if target is not None:
+            target.lines.append(ln)
+            target.x0 = min(target.x0, ln.x0)
+            target.x1 = max(target.x1, ln.x1)
+            target.y1 = max(target.y1, ln.y1)
+        else:
+            blocks.append(RawBlock(page_no, ln.x0, ln.y0, ln.x1, ln.y1, [ln]))
     return blocks
 
 
@@ -508,14 +542,15 @@ def _split_points_from_toc(toc: list, items: list[Item], page_count: int) -> lis
     points: list[tuple[int, str, int]] = []
     last = -1
     for lvl, title, page in chosen:
-        folded = _fold(title)
+        folded = _fold_title(title)
         idx = None
         for i, it in enumerate(items):
             if it.page < page or i <= last:
                 continue
             if it.page > page:
                 break
-            if it.type == "heading" and folded and (_fold(it.text).startswith(folded[:40]) or folded.startswith(_fold(it.text)[:40] or "\0")):
+            head = _fold_title(it.text) if it.type == "heading" else ""
+            if head and folded and (head.startswith(folded[:40]) or folded.startswith(head[:40])):
                 idx = i
                 break
         if idx is None:
