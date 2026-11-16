@@ -119,7 +119,9 @@ def storage_status(db: Session, user_id: uuid.UUID | None = None) -> StorageStat
     from app.models import Book
 
     s = get_settings()
-    used = db.scalar(select(func.coalesce(func.sum(Book.file_size + Book.content_bytes), 0))) or 0
+    # Books kept on the device occupy no space here.
+    on_server = Book.storage_mode == "server"
+    used = db.scalar(select(func.coalesce(func.sum(Book.file_size + Book.content_bytes), 0)).where(on_server)) or 0
     s.upload_dir.mkdir(parents=True, exist_ok=True)
     disk = shutil.disk_usage(s.upload_dir)
     limit = s.storage_limit_mb * 1024 * 1024
@@ -134,7 +136,7 @@ def storage_status(db: Session, user_id: uuid.UUID | None = None) -> StorageStat
     )
     if user_id is not None:
         status.user_used_bytes = int(
-            db.scalar(select(func.coalesce(func.sum(Book.file_size + Book.content_bytes), 0)).where(Book.owner_id == user_id)) or 0
+            db.scalar(select(func.coalesce(func.sum(Book.file_size + Book.content_bytes), 0)).where(Book.owner_id == user_id, on_server)) or 0
         )
         status.user_limit_bytes = s.user_quota_mb * 1024 * 1024 or None
     return status

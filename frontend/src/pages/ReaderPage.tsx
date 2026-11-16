@@ -18,7 +18,8 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { Dialog } from "../components/Dialog";
 import { useToast } from "../components/toast";
 import { Button, IconButton, Spinner } from "../components/ui";
-import { useBook, useReprocess } from "../features/library/hooks";
+import { hasBookMode, whereIs } from "../features/library/availability";
+import { useBook, useInvalidateLibrary, useReprocess } from "../features/library/hooks";
 import { BookView, TOOLBAR, type Position, type SelectionDraft, type Target } from "../features/reader/BookView";
 import { AnnotationsPanel, Drawer, SearchPanel, TocPanel } from "../features/reader/Panels";
 import { PdfViewer } from "../features/reader/PdfViewer";
@@ -27,6 +28,7 @@ import { SettingsPanel } from "../features/reader/SettingsPanel";
 import { usePreferences } from "../features/reader/usePreferences";
 import { ApiError, api } from "../services/api";
 import { usePublicConfig } from "../services/config";
+import { IS_APP } from "../services/platform";
 import type { Book, Bookmark, HighlightColor, NewBookmark, Progress } from "../services/types";
 
 type Panel = "toc" | "search" | "notes" | "settings" | null;
@@ -54,7 +56,8 @@ export function ReaderPage() {
       </div>
     );
   }
-  const wantsPdf = params.get("modo") === "pdf" || book.chapter_count === 0;
+  if (whereIs(book) === "elsewhere") return <ElsewhereScreen book={book} theme={prefs.theme} />;
+  const wantsPdf = params.get("modo") === "pdf" || !hasBookMode(book);
   return (
     <Reader
       key={`${book.id}-${book.content_version}`}
@@ -88,7 +91,9 @@ function Reader({
   const navigate = useNavigate();
   const { data: config } = usePublicConfig();
   const reprocess = useReprocess();
-  const hasContent = book.chapter_count > 0;
+  const hasContent = hasBookMode(book);
+  // The website cannot reprocess a book converted on a phone (the server never had the PDF).
+  const canOcr = !!config?.ocr_enabled && (IS_APP || book.storage_mode === "server");
   const version = book.content_version;
 
   const [panel, setPanel] = useState<Panel>(null);
@@ -406,7 +411,7 @@ function Reader({
               <>
                 <AlertTriangle className="size-4 shrink-0 text-[var(--warning)]" />
                 <span className="flex-1">{book.status_message ?? "O modo Livro não está disponível para este documento."}</span>
-                {config?.ocr_enabled && (
+                {canOcr && (
                   <Button
                     size="sm"
                     variant="secondary"
@@ -416,7 +421,8 @@ function Reader({
                       reprocess.mutate(
                         { id: book.id, ocr: true },
                         {
-                          onSuccess: () => toast("OCR agendado. O modo Livro aparece aqui quando terminar.", "success"),
+                          onSuccess: () =>
+                            toast(IS_APP ? "OCR iniciado neste aparelho. O modo Livro aparece aqui quando terminar." : "OCR agendado. O modo Livro aparece aqui quando terminar.", "success"),
                           onError: (e) => toast(e instanceof ApiError ? e.message : "Falha ao agendar OCR.", "error"),
                         },
                       )
@@ -436,7 +442,7 @@ function Reader({
         {mode === "pdf" ? (
           <div style={{ paddingTop: TOOLBAR + (hasContent ? 0 : 52) }}>
             {pdfStartPage !== null ? (
-              <PdfViewer url={api.fileUrl(book.id)} initialPage={pdfStartPage} onPageChange={onPdfPage} topOffset={TOOLBAR} />
+              <PdfViewer bookId={book.id} initialPage={pdfStartPage} onPageChange={onPdfPage} topOffset={TOOLBAR} />
             ) : (
               <div className="flex justify-center py-24">
                 <Spinner className="size-6" />
@@ -525,6 +531,66 @@ function Reader({
         onCreate={(d, color, note) => highlight(d, color, note)}
         onSave={(b, note, color) => edit.mutate({ b, note, color })}
         onDelete={(b) => remove.mutate(b)}
+      />
+    </div>
+  );
+}
+
+/** A book whose PDF lives on another phone. In the app, the same file can be brought here; on the
+ * website there is nothing to show but where to read it. */
+function ElsewhereScreen({ book, theme }: { book: Book; theme: string }) {
+  const toast = useToast();
+  const invalidate = useInvalidateLibrary();
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
+  const percent = Math.round(book.progress?.percent ?? 0);
+
+  async function bring(file: File) {
+    setBusy(true);
+    try {
+      const { importPdf } = await import("../device/importer");
+      await importPdf(file, { ocr: false, targetId: book.id });
+      await qc.invalidateQueries({ queryKey: ["book", book.id] });
+      invalidate();
+      toast("PDF adicionado a este aparelho. Convertendo para o modo Livro…", "success");
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Não foi possível abrir este arquivo.", "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="reader flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center" data-theme={theme}>
+      <FileText className="size-8 opacity-50" />
+      <h1 className="max-w-md text-lg font-semibold">{book.title}</h1>
+      <p className="max-w-md text-sm opacity-75">
+        {IS_APP
+          ? "Este livro foi importado em outro aparelho e o PDF ficou guardado lá. Escolha o mesmo arquivo para ler aqui; seu progresso e suas anotações continuam."
+          : "Este livro foi importado pelo aplicativo PDBook e o PDF fica guardado no celular. Abra-o no aplicativo para ler."}
+      </p>
+      {percent > 0 && <p className="text-xs opacity-60">Você leu {percent}%.</p>}
+      <div className="flex flex-wrap justify-center gap-2">
+        <Link to="/biblioteca">
+          <Button variant="secondary">Voltar à biblioteca</Button>
+        </Link>
+        {IS_APP && (
+          <Button loading={busy} onClick={() => input.current?.click()}>
+            Escolher o PDF
+          </Button>
+        )}
+      </div>
+      <input
+        ref={input}
+        type="file"
+        accept="application/pdf,.pdf"
+        hidden
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) void bring(f);
+          e.target.value = "";
+        }}
       />
     </div>
   );

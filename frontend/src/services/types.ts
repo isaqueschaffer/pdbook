@@ -18,12 +18,26 @@ export interface Job {
   finished_at: string | null;
 }
 
+/** App only: what this phone holds for a book. */
+export interface DeviceState {
+  /** The PDF is stored on this device. */
+  file: boolean;
+  /** Book-mode content converted on this device (key prefix of its chapters and images). */
+  contentKey: string | null;
+  contentBytes: number;
+  /** The server knows this book (false until the first sync after an offline import). */
+  registered: boolean;
+  sha256?: string;
+}
+
 export interface Book {
   id: string;
   title: string;
   author: string | null;
   original_filename: string;
   file_size: number;
+  /** server: uploaded and converted by the server · device: PDF and conversion live on a phone. */
+  storage_mode: "server" | "device";
   page_count: number;
   status: BookStatus;
   status_message: string | null;
@@ -38,6 +52,7 @@ export interface Book {
   last_opened_at: string | null;
   progress: { percent: number; chapter_index: number; updated_at: string } | null;
   job: Job | null;
+  device?: DeviceState;
 }
 
 export interface BookPage {
@@ -71,6 +86,15 @@ export interface PublicConfig {
   max_upload_mb: number;
   max_pdf_pages: number;
   ocr_enabled: boolean;
+}
+
+/** What pdf.js needs to open a book's original PDF. */
+export interface PdfSource {
+  url: string;
+  httpHeaders?: Record<string, string>;
+  withCredentials?: boolean;
+  /** Releases an object URL created for a file stored on the device. */
+  release?: () => void;
 }
 
 export interface Section {

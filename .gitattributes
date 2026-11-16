@@ -2,3 +2,6 @@
 * text=auto eol=lf
 *.png binary
 *.pdf binary
+
+# Windows batch files (Android gradlew.bat) need CRLF to run reliably.
+*.bat text eol=crlf

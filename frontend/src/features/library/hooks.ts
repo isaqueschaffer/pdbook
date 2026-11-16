@@ -67,6 +67,19 @@ export function useReprocess() {
   });
 }
 
+export function useRemoveFromDevice() {
+  const qc = useQueryClient();
+  const invalidate = useInvalidateLibrary();
+  return useMutation({
+    mutationFn: (id: string) => api.removeFromDevice(id),
+    onSuccess: (book) => {
+      qc.setQueryData(["book", book.id], book);
+      qc.removeQueries({ queryKey: ["reader", book.id] });
+      invalidate();
+    },
+  });
+}
+
 export function useUpdateBook() {
   const qc = useQueryClient();
   const invalidate = useInvalidateLibrary();

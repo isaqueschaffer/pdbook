@@ -1,14 +1,13 @@
 import { Minus, Plus, ScanLine } from "lucide-react";
-import { GlobalWorkerOptions, getDocument, type PDFDocumentProxy, type RenderTask } from "pdfjs-dist";
-import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import { getDocument, type PDFDocumentLoadingTask, type PDFDocumentProxy, type RenderTask } from "pdfjs-dist";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Spinner } from "../../components/ui";
-
-GlobalWorkerOptions.workerSrc = workerUrl;
+import { ApiError, api } from "../../services/api";
+import { PDFJS_ASSETS } from "../../services/pdfjs";
 
 interface Props {
-  url: string;
+  bookId: string;
   initialPage: number;
   onPageChange: (page: number, total: number) => void;
   topOffset: number;
@@ -18,7 +17,7 @@ interface Props {
  * Original-layout viewer. Pages are rendered lazily as they approach the viewport and their canvases
  * are released when far away, so long documents stay light on memory (important on phones).
  */
-export function PdfViewer({ url, initialPage, onPageChange, topOffset }: Props) {
+export function PdfViewer({ bookId, initialPage, onPageChange, topOffset }: Props) {
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [baseSize, setBaseSize] = useState<{ w: number; h: number } | null>(null);
@@ -29,29 +28,28 @@ export function PdfViewer({ url, initialPage, onPageChange, topOffset }: Props) 
 
   useEffect(() => {
     let cancelled = false;
-    const task = getDocument({
-      url,
-      withCredentials: true,
-      cMapUrl: "/pdfjs/cmaps/",
-      cMapPacked: true,
-      standardFontDataUrl: "/pdfjs/standard_fonts/",
-      wasmUrl: "/pdfjs/wasm/",
-      iccUrl: "/pdfjs/iccs/",
-    });
-    task.promise
-      .then(async (pdf) => {
+    let task: PDFDocumentLoadingTask | null = null;
+    let release: (() => void) | undefined;
+    api
+      .pdfSource(bookId)
+      .then(async (source) => {
+        release = source.release;
+        if (cancelled) return release?.();
+        task = getDocument({ url: source.url, httpHeaders: source.httpHeaders, withCredentials: source.withCredentials, ...PDFJS_ASSETS });
+        const pdf = await task.promise;
         if (cancelled) return;
         const first = await pdf.getPage(1);
         const vp = first.getViewport({ scale: 1 });
         setBaseSize({ w: vp.width, h: vp.height });
         setDoc(pdf);
       })
-      .catch(() => !cancelled && setError("Não foi possível abrir o PDF original."));
+      .catch((e: unknown) => !cancelled && setError(e instanceof ApiError ? e.message : "Não foi possível abrir o PDF original."));
     return () => {
       cancelled = true;
-      void task.destroy();
+      void task?.destroy();
+      release?.();
     };
-  }, [url]);
+  }, [bookId]);
 
   useEffect(() => {
     const el = containerRef.current;

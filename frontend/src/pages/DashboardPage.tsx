@@ -8,6 +8,7 @@ import { BookCover } from "../features/library/BookCover";
 import { useDashboard } from "../features/library/hooks";
 import { usePublicConfig } from "../services/config";
 import { formatBytes, formatRelative } from "../services/format";
+import { IS_APP } from "../services/platform";
 
 function greeting() {
   const h = new Date().getHours();
@@ -46,9 +47,13 @@ export function DashboardPage() {
 
       {data.storage.warn && (
         <Alert tone={data.storage.full ? "danger" : "warning"} className="mb-6">
-          {data.storage.full
-            ? "O armazenamento do servidor está cheio. Novos envios estão bloqueados até que espaço seja liberado."
-            : "O armazenamento do servidor está próximo do limite configurado."}
+          {IS_APP
+            ? data.storage.full
+              ? "O aparelho está sem espaço. Remova livros deste aparelho para importar novos."
+              : "O espaço livre no aparelho está acabando."
+            : data.storage.full
+              ? "O armazenamento do servidor está cheio. Novos envios estão bloqueados até que espaço seja liberado."
+              : "O armazenamento do servidor está próximo do limite configurado."}
         </Alert>
       )}
 
@@ -109,10 +114,14 @@ export function DashboardPage() {
             />
             <Stat
               icon={<HardDrive className="size-4" />}
-              label="Seu armazenamento"
+              label={IS_APP ? "Neste aparelho" : "Seu armazenamento"}
               value={formatBytes(data.storage.user_used_bytes ?? 0)}
               sub={
-                data.storage.user_limit_bytes
+                IS_APP
+                  ? data.storage.limit_bytes
+                    ? `${formatBytes(data.storage.disk_free_bytes)} livres`
+                    : "Livros guardados no aparelho"
+                  : data.storage.user_limit_bytes
                   ? `de ${formatBytes(data.storage.user_limit_bytes)}`
                   : `Servidor: ${Math.round(storagePct)}% de ${formatBytes(data.storage.limit_bytes)}`
               }

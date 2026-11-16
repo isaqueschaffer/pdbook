@@ -24,6 +24,9 @@ from app.db.base import Base, TimestampMixin, utcnow
 # pending: aguardando na fila · processing: convertendo · ready: modo Livro disponível
 # needs_ocr: pouco texto extraível (OCR opcional) · failed: conversão falhou (PDF original continua disponível)
 BOOK_STATUSES = ("pending", "processing", "ready", "needs_ocr", "failed")
+# server: o PDF foi enviado e é convertido pelo worker · device: o PDF e a conversão ficam no aparelho
+# (app); o servidor guarda só os metadados para sincronizar progresso e anotações entre dispositivos.
+STORAGE_MODES = ("server", "device")
 JOB_KINDS = ("text", "ocr")
 JOB_STATUSES = ("queued", "running", "retrying", "succeeded", "failed", "canceled")
 
@@ -37,6 +40,7 @@ class Book(TimestampMixin, Base):
     __table_args__ = (
         CheckConstraint(_in("status", BOOK_STATUSES), name="status"),
         CheckConstraint("page_count >= 0", name="page_count"),
+        CheckConstraint(_in("storage_mode", STORAGE_MODES), name="storage_mode"),
         Index("ix_books_owner_created", "owner_id", "created_at"),
     )
 
@@ -51,6 +55,7 @@ class Book(TimestampMixin, Base):
     file_size: Mapped[int] = mapped_column(BigInteger, nullable=False)
     content_bytes: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
     sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    storage_mode: Mapped[str] = mapped_column(String(10), default="server", server_default="server", nullable=False)
     page_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)
     status_message: Mapped[str | None] = mapped_column(String(500))

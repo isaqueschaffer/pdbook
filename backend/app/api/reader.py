@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -139,16 +139,26 @@ def get_progress(book: OwnedBook, user: CurrentUser, db: DB) -> ReadingProgress 
 
 @router.put("/progress", response_model=ProgressOut)
 def put_progress(payload: ProgressIn, book: OwnedBook, user: CurrentUser, db: DB) -> ReadingProgress:
+    now = datetime.now(timezone.utc)
+    reached = payload.updated_at
+    if reached is not None:
+        reached = reached if reached.tzinfo else reached.replace(tzinfo=timezone.utc)
+        # Clock skew guard: a device clock ahead of ours cannot pin its position in the future.
+        reached = min(reached, now)
     prog = db.scalar(select(ReadingProgress).where(ReadingProgress.user_id == user.id, ReadingProgress.book_id == book.id))
     if prog is None:
         prog = ReadingProgress(user_id=user.id, book_id=book.id)
         db.add(prog)
-    data = payload.model_dump()
+    elif reached is not None and prog.updated_at is not None:
+        current = prog.updated_at if prog.updated_at.tzinfo else prog.updated_at.replace(tzinfo=timezone.utc)
+        if reached + timedelta(milliseconds=1) < current:
+            return prog  # stale position from a device that was offline
+    data = payload.model_dump(exclude={"updated_at"})
     data["page"] = min(data["page"], max(book.page_count, 1))
     for k, v in data.items():
         setattr(prog, k, v)
-    prog.updated_at = datetime.now(timezone.utc)
-    book.last_opened_at = prog.updated_at
+    prog.updated_at = reached or now
+    book.last_opened_at = max(book.last_opened_at.replace(tzinfo=book.last_opened_at.tzinfo or timezone.utc), prog.updated_at) if book.last_opened_at else prog.updated_at
     db.commit()
     return prog
 
@@ -171,7 +181,13 @@ def list_bookmarks(book: OwnedBook, user: CurrentUser, db: DB) -> list[Bookmark]
 def create_bookmark(payload: BookmarkIn, book: OwnedBook, user: CurrentUser, db: DB) -> Bookmark:
     if payload.chapter_index >= max(book.chapter_count, 1) and book.chapter_count:
         raise HTTPException(422, "Capítulo inválido")
-    bm = Bookmark(user_id=user.id, book_id=book.id, **payload.model_dump())
+    if payload.id is not None:
+        existing = db.get(Bookmark, payload.id)
+        if existing is not None:
+            if existing.user_id == user.id and existing.book_id == book.id:
+                return existing  # replayed request
+            raise HTTPException(status.HTTP_409_CONFLICT, "Identificador de marcador já utilizado.")
+    bm = Bookmark(user_id=user.id, book_id=book.id, **payload.model_dump(exclude_none=True))
     if bm.kind == "highlight" and not bm.color:
         bm.color = "yellow"
     db.add(bm)

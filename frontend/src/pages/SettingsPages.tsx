@@ -9,6 +9,7 @@ import { ME_KEY, useMe } from "../features/auth/auth";
 import { SettingsPanel } from "../features/reader/SettingsPanel";
 import { usePreferences, readerStyle } from "../features/reader/usePreferences";
 import { ApiError, api } from "../services/api";
+import { IS_APP } from "../services/platform";
 import { formatBytes } from "../services/format";
 
 function Section({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
@@ -147,7 +148,7 @@ export function AccountSettingsPage() {
         {st ? (
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
-              <span className="text-ink-soft">Usado pelos seus livros</span>
+              <span className="text-ink-soft">{IS_APP ? "Usado pelos livros neste aparelho" : "Usado pelos seus livros"}</span>
               <span className="font-medium tabular-nums">
                 {formatBytes(st.user_used_bytes ?? 0)}
                 {userLimit ? ` de ${formatBytes(userLimit)}` : ""}
@@ -155,15 +156,21 @@ export function AccountSettingsPage() {
             </div>
             {userLimit && <ProgressBar value={((st.user_used_bytes ?? 0) / userLimit) * 100} label="Uso da sua cota" />}
             <div className="flex justify-between">
-              <span className="text-ink-soft">Servidor</span>
+              <span className="text-ink-soft">{IS_APP ? "Espaço do aplicativo" : "Servidor"}</span>
               <span className="tabular-nums">
                 {formatBytes(st.used_bytes)} de {formatBytes(st.limit_bytes)}
               </span>
             </div>
-            <ProgressBar value={(st.used_bytes / st.limit_bytes) * 100} label="Uso do servidor" />
+            {st.limit_bytes > 0 && <ProgressBar value={(st.used_bytes / st.limit_bytes) * 100} label={IS_APP ? "Uso do espaço do aplicativo" : "Uso do servidor"} />}
             {st.warn && (
               <Alert tone={st.full ? "danger" : "warning"}>
-                {st.full ? "O armazenamento está cheio; novos envios estão bloqueados." : "O armazenamento está próximo do limite."}
+                {IS_APP
+                  ? st.full
+                    ? "O aparelho está sem espaço. Remova livros deste aparelho para importar novos."
+                    : "O espaço livre no aparelho está acabando."
+                  : st.full
+                    ? "O armazenamento está cheio; novos envios estão bloqueados."
+                    : "O armazenamento está próximo do limite."}
               </Alert>
             )}
           </div>
@@ -194,7 +201,11 @@ export function AccountSettingsPage() {
         onConfirm={deleteAccount}
         message={
           <div className="space-y-3">
-            <p>Todos os seus livros e arquivos serão apagados do servidor. Esta ação não pode ser desfeita.</p>
+            <p>
+              {IS_APP
+                ? "Sua conta, seus livros, o progresso e as anotações serão apagados do servidor e deste aparelho. Esta ação não pode ser desfeita."
+                : "Todos os seus livros e arquivos serão apagados do servidor. Esta ação não pode ser desfeita."}
+            </p>
             {deleteError && <Alert tone="danger">{deleteError}</Alert>}
             <TextField label="Confirme com sua senha" type="password" value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)} />
           </div>

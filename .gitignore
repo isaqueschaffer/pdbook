@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+!.env.app.example
 
 # Data and backups
 data/
@@ -18,6 +19,8 @@ __pycache__/
 node_modules/
 frontend/dist/
 frontend/public/pdfjs/
+frontend/dist-app/
+frontend/.app-public/
 
 # Editors / OS
 .vscode/

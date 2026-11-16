@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">PDBook</string>
+    <string name="title_activity_main">PDBook</string>
+    <string name="package_name">br.com.pdbook.app</string>
+    <string name="custom_url_scheme">br.com.pdbook.app</string>
+</resources>

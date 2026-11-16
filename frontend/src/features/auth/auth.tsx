@@ -3,7 +3,10 @@ import { useEffect, type ReactNode } from "react";
 import { Navigate, useLocation } from "react-router";
 
 import { PageLoader } from "../../components/ui";
+import { onSyncChange } from "../../device/sync";
+import { signOutLocally } from "../../device/library";
 import { ApiError, api } from "../../services/api";
+import { IS_APP } from "../../services/platform";
 import type { User } from "../../services/types";
 
 export const ME_KEY = ["me"] as const;
@@ -29,13 +32,23 @@ export function SessionWatcher() {
   const qc = useQueryClient();
   useEffect(() => {
     const onUnauthorized = () => {
+      if (IS_APP) signOutLocally();
       if (qc.getQueryData(ME_KEY)) {
         qc.clear();
         qc.setQueryData(ME_KEY, null);
       }
     };
     window.addEventListener("pdbook:unauthorized", onUnauthorized);
-    return () => window.removeEventListener("pdbook:unauthorized", onUnauthorized);
+    // App: a sync brought changes from the server (another device, the website): refresh the screens.
+    const stopSync = IS_APP
+      ? onSyncChange(() => {
+          for (const key of ["books", "dashboard", "book", "preferences", "storage"]) void qc.invalidateQueries({ queryKey: [key] });
+        })
+      : () => {};
+    return () => {
+      window.removeEventListener("pdbook:unauthorized", onUnauthorized);
+      stopSync();
+    };
   }, [qc]);
   return null;
 }

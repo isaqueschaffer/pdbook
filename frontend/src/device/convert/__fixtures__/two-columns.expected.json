@@ -1,0 +1,42 @@
+{
+ "page_count": 1,
+ "word_count": 224,
+ "needs_ocr": false,
+ "chapters": [
+  {
+   "title": "Artigo em Duas Colunas",
+   "level": 1,
+   "start_page": 1,
+   "end_page": 1,
+   "sections": [],
+   "blocks": [
+    {
+     "type": "heading",
+     "page": 1,
+     "text": "Artigo em Duas Colunas",
+     "level": 1
+    },
+    {
+     "type": "paragraph",
+     "page": 1,
+     "text": "Coluna esquerda primeiro bloco. A leitura atenta exige tempo e silêncio. Cada parágrafo deste documento foi escrito para testar a reconstrução do texto, a quebra automática de linhas e a preservação da ordem de leitura em diferentes tamanhos de fonte. Palavras longas como extraordinariamente e responsabilidade ajudam a verificar a hifenização no fim das linhas."
+    },
+    {
+     "type": "paragraph",
+     "page": 1,
+     "text": "Coluna esquerda segundo bloco. A leitura atenta exige tempo e silêncio. Cada parágrafo deste documento foi escrito para testar a reconstrução do texto, a quebra automática de linhas e a preservação da ordem de leitura em diferentes tamanhos de fonte. Palavras longas como extraordinariamente e responsabilidade ajudam a verificar a hifenização no fim das linhas."
+    },
+    {
+     "type": "paragraph",
+     "page": 1,
+     "text": "Coluna direita primeiro bloco. A leitura atenta exige tempo e silêncio. Cada parágrafo deste documento foi escrito para testar a reconstrução do texto, a quebra automática de linhas e a preservação da ordem de leitura em diferentes tamanhos de fonte. Palavras longas como extraordinariamente e responsabilidade ajudam a verificar a hifenização no fim das linhas."
+    },
+    {
+     "type": "paragraph",
+     "page": 1,
+     "text": "Coluna direita segundo bloco. A leitura atenta exige tempo e silêncio. Cada parágrafo deste documento foi escrito para testar a reconstrução do texto, a quebra automática de linhas e a preservação da ordem de leitura em diferentes tamanhos de fonte. Palavras longas como extraordinariamente e responsabilidade ajudam a verificar a hifenização no fim das linhas."
+    }
+   ]
+  }
+ ]
+}

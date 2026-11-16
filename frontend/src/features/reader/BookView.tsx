@@ -284,18 +284,44 @@ export function BookView(props: Props) {
   );
 }
 
+/** Figures come from the server (website) or from the phone's database (app). */
+function BookImage({ bookId, name, version, width, height, page }: { bookId: string; name: string; version: number; width?: number | null; height?: number | null; page: number }) {
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    let release: (() => void) | undefined;
+    let cancelled = false;
+    api
+      .imageSrc(bookId, name, version)
+      .then((r) => {
+        if (cancelled) r.release?.();
+        else {
+          release = r.release;
+          setSrc(r.src);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      release?.();
+    };
+  }, [bookId, name, version]);
+  return (
+    <img
+      src={src ?? undefined}
+      width={width ?? undefined}
+      height={height ?? undefined}
+      loading="lazy"
+      decoding="async"
+      alt={`Figura da página ${page}`}
+    />
+  );
+}
+
 const BlockView = memo(function BlockView({ block, index, bookId, version, marks }: { block: Block; index: number; bookId: string; version: number; marks?: Bookmark[] }) {
   if (block.type === "image" && block.image) {
     return (
       <figure data-block={index} data-page={block.page}>
-        <img
-          src={api.imageUrl(bookId, block.image, version)}
-          width={block.width ?? undefined}
-          height={block.height ?? undefined}
-          loading="lazy"
-          decoding="async"
-          alt={`Figura da página ${block.page}`}
-        />
+        <BookImage bookId={bookId} name={block.image} version={version} width={block.width} height={block.height} page={block.page} />
       </figure>
     );
   }

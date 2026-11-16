@@ -17,6 +17,23 @@ DB = Annotated[Session, Depends(get_db)]
 
 SESSION_REFRESH_INTERVAL = timedelta(hours=1)
 
+# The mobile app (Capacitor) runs on its own origin (https://localhost, capacitor://localhost), where
+# third-party cookies are unreliable. It identifies itself with this header and then authenticates
+# with "Authorization: Bearer <token>" instead of the session cookie. Same tokens, same table.
+APP_CLIENT_HEADER = "x-pdbook-client"
+APP_CLIENT_VALUE = "app"
+
+
+def is_app_client(request: Request) -> bool:
+    return request.headers.get(APP_CLIENT_HEADER) == APP_CLIENT_VALUE
+
+
+def request_token(request: Request) -> str | None:
+    auth = request.headers.get("authorization") or ""
+    if auth[:7].lower() == "bearer ":
+        return auth[7:].strip() or None
+    return request.cookies.get(get_settings().session_cookie_name)
+
 
 def _aware(dt: datetime) -> datetime:
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
@@ -40,7 +57,7 @@ def clear_session_cookie(response: Response) -> None:
     response.delete_cookie(s.session_cookie_name, path="/api", httponly=True, secure=s.secure_cookies, samesite="lax")
 
 
-def start_session(db: Session, user: User, request: Request, response: Response) -> None:
+def start_session(db: Session, user: User, request: Request, response: Response) -> str:
     token = new_session_token()
     now = datetime.now(timezone.utc)
     db.add(
@@ -55,11 +72,13 @@ def start_session(db: Session, user: User, request: Request, response: Response)
     )
     user.last_login_at = now
     db.commit()
-    set_session_cookie(response, token)
+    if not is_app_client(request):
+        set_session_cookie(response, token)
+    return token
 
 
 def current_session(request: Request, db: DB) -> UserSession:
-    token = request.cookies.get(get_settings().session_cookie_name)
+    token = request_token(request)
     if not token or len(token) > 200:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Sessão expirada. Entre novamente.")
     sess = db.scalar(select(UserSession).where(UserSession.token_hash == hash_session_token(token)))

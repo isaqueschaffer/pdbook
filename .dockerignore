@@ -4,6 +4,9 @@
 **/.pytest_cache
 frontend/dist
 frontend/public/pdfjs
+frontend/dist-app
+frontend/.app-public
+frontend/android
 .env
 .git
 data

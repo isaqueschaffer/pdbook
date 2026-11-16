@@ -59,6 +59,11 @@ class UserOut(BaseModel):
     created_at: datetime
 
 
+class AuthOut(UserOut):
+    # Only returned to the app client (X-PDBook-Client: app); the browser gets an HttpOnly cookie.
+    session_token: str | None = None
+
+
 class AccountUpdateIn(BaseModel):
     display_name: str | None = Field(default=None, min_length=1, max_length=80)
     email: EmailStr | None = None

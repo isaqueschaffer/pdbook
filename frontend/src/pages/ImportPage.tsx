@@ -9,6 +9,7 @@ import { StatusBadge } from "../features/library/StatusBadge";
 import { ApiError, uploadBook } from "../services/api";
 import { usePublicConfig } from "../services/config";
 import { formatBytes } from "../services/format";
+import { IS_APP } from "../services/platform";
 
 interface Item {
   key: string;
@@ -45,7 +46,10 @@ export function ImportPage() {
       const abort = new AbortController();
       patch(item.key, { state: "uploading", abort });
       try {
-        const book = await uploadBook(item.file, { ocr }, (p) => patch(item.key, { progress: p }), abort.signal);
+        // App: the PDF is stored and converted on the phone. Website: it is uploaded to the server.
+        const book = IS_APP
+          ? await (await import("../device/importer")).importPdf(item.file, { ocr })
+          : await uploadBook(item.file, { ocr }, (p) => patch(item.key, { progress: p }), abort.signal);
         patch(item.key, { state: "done", progress: 100, bookId: book.id });
         invalidate();
       } catch (e) {
@@ -87,7 +91,14 @@ export function ImportPage() {
 
   return (
     <div className="max-w-3xl">
-      <PageHeader title="Importar documentos" description="Envie PDFs para sua biblioteca. A conversão acontece em segundo plano." />
+      <PageHeader
+        title="Importar documentos"
+        description={
+          IS_APP
+            ? "Os PDFs ficam guardados neste aparelho e são convertidos aqui mesmo. Sua conta sincroniza o progresso e as anotações."
+            : "Envie PDFs para sua biblioteca. A conversão acontece em segundo plano."
+        }
+      />
 
       <div
         onDragOver={(e) => {
@@ -103,13 +114,21 @@ export function ImportPage() {
         <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-accent-soft text-accent">
           <FileUp className="size-5" aria-hidden />
         </div>
-        <p className="font-medium">Arraste PDFs para cá</p>
-        <p className="mt-1 text-sm text-ink-soft">
-          ou{" "}
+        {IS_APP ? (
           <button type="button" onClick={() => inputRef.current?.click()} className="font-medium text-accent underline-offset-2 hover:underline">
-            escolha arquivos
+            Escolher PDFs
           </button>
-        </p>
+        ) : (
+          <>
+            <p className="font-medium">Arraste PDFs para cá</p>
+            <p className="mt-1 text-sm text-ink-soft">
+              ou{" "}
+              <button type="button" onClick={() => inputRef.current?.click()} className="font-medium text-accent underline-offset-2 hover:underline">
+                escolha arquivos
+              </button>
+            </p>
+          </>
+        )}
         <p className="mt-4 text-xs text-ink-faint">
           Até {config?.max_upload_mb ?? 50} MB e {config?.max_pdf_pages ?? 250} páginas por arquivo. PDFs protegidos por senha não são suportados.
         </p>
@@ -132,8 +151,9 @@ export function ImportPage() {
           <span className="text-sm">
             <span className="font-medium">Reconhecer texto com OCR</span>
             <span className="mt-0.5 block text-ink-soft">
-              Para documentos digitalizados (fotos ou scans de páginas). É mais lento e processa um documento por vez. Se você não marcar, o PDBook avisa
-              quando o PDF parecer digitalizado e você poderá ativar o OCR depois.
+              Para documentos digitalizados (fotos ou scans de páginas). É mais lento e processa um documento por vez
+              {IS_APP ? "; no celular, conte com alguns segundos por página" : ""}. Se você não marcar, o PDBook avisa quando o PDF parecer digitalizado e
+              você poderá ativar o OCR depois.
             </span>
           </span>
         </label>
@@ -177,8 +197,8 @@ function UploadRow({ item, onCancel, onRemove }: { item: Item; onCancel: () => v
         <p className="truncate text-sm font-medium">{book?.title ?? item.file.name}</p>
         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-soft">
           <span>{formatBytes(item.file.size)}</span>
-          {item.state === "queued" && <span>· Na fila de envio</span>}
-          {item.state === "uploading" && <span>· Enviando {item.progress}%</span>}
+          {item.state === "queued" && <span>· {IS_APP ? "Na fila" : "Na fila de envio"}</span>}
+          {item.state === "uploading" && <span>· {IS_APP ? "Lendo o arquivo…" : `Enviando ${item.progress}%`}</span>}
           {item.state === "error" && <span className="text-danger">· {item.error}</span>}
           {item.existingId && (
             <Link to={`/ler/${item.existingId}`} className="font-medium text-accent hover:underline">
@@ -188,7 +208,7 @@ function UploadRow({ item, onCancel, onRemove }: { item: Item; onCancel: () => v
           {book && <StatusBadge book={book} />}
           {book?.status_message && book.status !== "ready" && <span>{book.status_message}</span>}
         </div>
-        {item.state === "uploading" && <ProgressBar value={item.progress} className="mt-2" label="Progresso do envio" />}
+        {item.state === "uploading" && !IS_APP && <ProgressBar value={item.progress} className="mt-2" label="Progresso do envio" />}
         {book?.status === "processing" && book.job && <ProgressBar value={book.job.progress} className="mt-2" label="Progresso da conversão" />}
       </div>
       {book && (book.status === "ready" || book.status === "needs_ocr" || book.status === "failed") && (
@@ -196,7 +216,7 @@ function UploadRow({ item, onCancel, onRemove }: { item: Item; onCancel: () => v
           Abrir
         </Link>
       )}
-      {item.state === "uploading" && (
+      {item.state === "uploading" && !IS_APP && (
         <button onClick={onCancel} aria-label="Cancelar envio" className="rounded-md p-1 text-ink-faint hover:text-ink">
           <X className="size-4" />
         </button>

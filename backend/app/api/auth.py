@@ -5,18 +5,25 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from sqlalchemy import delete, select
 
-from app.api.deps import DB, CurrentUser, clear_session_cookie, current_session, start_session
+from app.api.deps import DB, CurrentUser, clear_session_cookie, current_session, is_app_client, start_session
 from app.core import ratelimit
 from app.core.config import get_settings
 from app.core.security import hash_password, password_needs_rehash, verify_password
 from app.models import User, UserSession
-from app.schemas.auth import LoginIn, RegisterIn, UserOut
+from app.schemas.auth import AuthOut, LoginIn, RegisterIn, UserOut
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-def register(payload: RegisterIn, request: Request, response: Response, db: DB) -> User:
+def _auth_out(user: User, request: Request, token: str) -> AuthOut:
+    out = AuthOut.model_validate(user)
+    if is_app_client(request):
+        out.session_token = token
+    return out
+
+
+@router.post("/register", response_model=AuthOut, response_model_exclude_none=True, status_code=status.HTTP_201_CREATED)
+def register(payload: RegisterIn, request: Request, response: Response, db: DB) -> AuthOut:
     s = get_settings()
     ratelimit.enforce("register", ratelimit.client_ip(request), s.register_rate_limit, s.register_rate_window)
     if db.scalar(select(User.id).where(User.email == payload.email)):
@@ -24,12 +31,11 @@ def register(payload: RegisterIn, request: Request, response: Response, db: DB) 
     user = User(email=payload.email, display_name=payload.display_name, password_hash=hash_password(payload.password))
     db.add(user)
     db.flush()
-    start_session(db, user, request, response)
-    return user
+    return _auth_out(user, request, start_session(db, user, request, response))
 
 
-@router.post("/login", response_model=UserOut)
-def login(payload: LoginIn, request: Request, response: Response, db: DB) -> User:
+@router.post("/login", response_model=AuthOut, response_model_exclude_none=True)
+def login(payload: LoginIn, request: Request, response: Response, db: DB) -> AuthOut:
     s = get_settings()
     ratelimit.enforce("login-ip", ratelimit.client_ip(request), s.login_rate_limit * 3, s.login_rate_window)
     ratelimit.enforce("login-account", payload.email, s.login_rate_limit, s.login_rate_window)
@@ -40,8 +46,7 @@ def login(payload: LoginIn, request: Request, response: Response, db: DB) -> Use
         user.password_hash = hash_password(payload.password)
     # Opportunistic cleanup of this user's expired sessions.
     db.execute(delete(UserSession).where(UserSession.user_id == user.id, UserSession.expires_at < datetime.now(timezone.utc)))
-    start_session(db, user, request, response)
-    return user
+    return _auth_out(user, request, start_session(db, user, request, response))
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

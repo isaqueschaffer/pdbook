@@ -1,4 +1,4 @@
-import { BookOpen, FileText, MoreHorizontal, Pencil, RefreshCw, ScanText, Trash2 } from "lucide-react";
+import { BookOpen, FileText, HardDriveDownload, MoreHorizontal, Pencil, RefreshCw, ScanText, Smartphone, Trash2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
 
@@ -8,13 +8,25 @@ import { useToast } from "../../components/toast";
 import { Button, ProgressBar, TextField } from "../../components/ui";
 import { ApiError } from "../../services/api";
 import { formatBytes } from "../../services/format";
+import { IS_APP } from "../../services/platform";
 import type { Book, PublicConfig } from "../../services/types";
+import { hasBookMode, whereIs } from "./availability";
 import { BookCover } from "./BookCover";
-import { isActive, useDeleteBook, useReprocess, useUpdateBook } from "./hooks";
+import { isActive, useDeleteBook, useRemoveFromDevice, useReprocess, useUpdateBook } from "./hooks";
 import { StatusBadge } from "./StatusBadge";
 
 export function readerHref(book: Book) {
-  return book.chapter_count > 0 ? `/ler/${book.id}` : `/ler/${book.id}?modo=pdf`;
+  return hasBookMode(book) || whereIs(book) === "elsewhere" ? `/ler/${book.id}` : `/ler/${book.id}?modo=pdf`;
+}
+
+/** Tells where the PDF is when it cannot be opened here. */
+export function LocationBadge({ book }: { book: Book }) {
+  if (whereIs(book) !== "elsewhere") return null;
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2 py-0.5 text-[11px] font-medium text-ink-soft">
+      <Smartphone className="size-3" /> {IS_APP ? "Em outro aparelho" : "No app"}
+    </span>
+  );
 }
 
 export function BookCard({ book, config }: { book: Book; config?: PublicConfig }) {
@@ -33,8 +45,9 @@ export function BookCard({ book, config }: { book: Book; config?: PublicConfig }
         </div>
         <BookActions book={book} config={config} />
       </div>
-      <div className="mt-2 flex items-center gap-2">
+      <div className="mt-2 flex flex-wrap items-center gap-2">
         <StatusBadge book={book} />
+        <LocationBadge book={book} />
         {book.status === "ready" && percent > 0 && <span className="text-[11px] text-ink-faint">{Math.round(percent)}%</span>}
       </div>
       {book.status === "processing" && book.job && <ProgressBar value={book.job.progress} className="mt-2" label="Progresso da conversão" />}
@@ -49,17 +62,24 @@ export function BookActions({ book, config, onDeleted }: { book: Book; config?: 
   const del = useDeleteBook();
   const reprocess = useReprocess();
   const update = useUpdateBook();
+  const removeLocal = useRemoveFromDevice();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(book.title);
   const [author, setAuthor] = useState(book.author ?? "");
 
   const busy = isActive(book);
+  const where = whereIs(book);
+  // Reprocessing needs the PDF: on the server for website uploads, on this phone for app imports.
+  const canReprocess = where === "server" || (IS_APP && !!book.device?.file);
 
   async function runReprocess(ocr: boolean) {
     try {
       await reprocess.mutateAsync({ id: book.id, ocr });
-      toast(ocr ? "OCR agendado. Isso pode levar alguns minutos." : "Reprocessamento agendado.", "success");
+      toast(
+        where === "here" ? (ocr ? "OCR iniciado neste aparelho. Isso pode levar alguns minutos." : "Reprocessando neste aparelho.") : ocr ? "OCR agendado. Isso pode levar alguns minutos." : "Reprocessamento agendado.",
+        "success",
+      );
     } catch (e) {
       toast(e instanceof ApiError ? e.message : "Não foi possível reprocessar.", "error");
     }
@@ -73,6 +93,15 @@ export function BookActions({ book, config, onDeleted }: { book: Book; config?: 
       onDeleted?.();
     } catch (e) {
       toast(e instanceof ApiError ? e.message : "Não foi possível excluir.", "error");
+    }
+  }
+
+  async function freeSpace() {
+    try {
+      await removeLocal.mutateAsync(book.id);
+      toast("PDF removido deste aparelho. O livro, o progresso e as anotações continuam na sua conta.", "success");
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Não foi possível remover.", "error");
     }
   }
 
@@ -93,8 +122,8 @@ export function BookActions({ book, config, onDeleted }: { book: Book; config?: 
         label={`Ações para ${book.title}`}
         trigger={<MoreHorizontal className="size-4" />}
         items={[
-          { label: "Ler no modo Livro", icon: <BookOpen className="size-4" />, onSelect: () => navigate(`/ler/${book.id}`), hidden: book.chapter_count === 0 },
-          { label: "Ver PDF original", icon: <FileText className="size-4" />, onSelect: () => navigate(`/ler/${book.id}?modo=pdf`) },
+          { label: "Ler no modo Livro", icon: <BookOpen className="size-4" />, onSelect: () => navigate(`/ler/${book.id}`), hidden: !hasBookMode(book) },
+          { label: "Ver PDF original", icon: <FileText className="size-4" />, onSelect: () => navigate(`/ler/${book.id}?modo=pdf`), hidden: where === "elsewhere" },
           {
             label: "Editar título e autor",
             icon: <Pencil className="size-4" />,
@@ -104,13 +133,20 @@ export function BookActions({ book, config, onDeleted }: { book: Book; config?: 
               setEditing(true);
             },
           },
-          { label: "Reprocessar texto", icon: <RefreshCw className="size-4" />, onSelect: () => runReprocess(false), disabled: busy },
+          { label: "Reprocessar texto", icon: <RefreshCw className="size-4" />, onSelect: () => runReprocess(false), disabled: busy, hidden: !canReprocess },
           {
             label: "Processar com OCR",
             icon: <ScanText className="size-4" />,
             onSelect: () => runReprocess(true),
             disabled: busy,
-            hidden: !config?.ocr_enabled,
+            hidden: !config?.ocr_enabled || !canReprocess,
+          },
+          {
+            label: "Remover deste aparelho",
+            icon: <HardDriveDownload className="size-4" />,
+            onSelect: freeSpace,
+            disabled: busy,
+            hidden: !(IS_APP && where === "here" && book.device?.registered),
           },
           { label: "Excluir livro", icon: <Trash2 className="size-4" />, onSelect: () => setConfirmDelete(true), danger: true },
         ]}
@@ -125,8 +161,9 @@ export function BookActions({ book, config, onDeleted }: { book: Book; config?: 
         onClose={() => setConfirmDelete(false)}
         message={
           <>
-            <strong className="text-ink">{book.title}</strong> será removido permanentemente, junto com o PDF original ({formatBytes(book.file_size)}), o
-            conteúdo convertido, o progresso, os marcadores e as anotações. Esta ação não pode ser desfeita.
+            <strong className="text-ink">{book.title}</strong> será removido permanentemente da sua conta
+            {book.storage_mode === "device" ? " e de todos os aparelhos" : ""}, junto com o PDF original ({formatBytes(book.file_size)}), o conteúdo convertido, o
+            progresso, os marcadores e as anotações. Esta ação não pode ser desfeita.
           </>
         }
       />

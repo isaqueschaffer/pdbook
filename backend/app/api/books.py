@@ -11,7 +11,7 @@ from datetime import timezone
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, File, Form, HTTPException, Query, Request, UploadFile, status
+from fastapi import APIRouter, File, Form, HTTPException, Query, Request, Response, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
@@ -21,7 +21,19 @@ from app.converters.pdf import clean_text, read_pdf_info
 from app.core import ratelimit
 from app.core.config import get_settings
 from app.models import Book, ReadingProgress, User
-from app.schemas.books import BookOut, BookPage, BookUpdateIn, DashboardOut, JobOut, ProgressSummary, ReprocessIn, SortKey, StorageOut
+from app.schemas.books import (
+    BookOut,
+    BookPage,
+    BookUpdateIn,
+    DashboardOut,
+    DeviceBookIn,
+    DeviceContentIn,
+    JobOut,
+    ProgressSummary,
+    ReprocessIn,
+    SortKey,
+    StorageOut,
+)
 from app.services import queue, storage
 from app.services.books import delete_book
 
@@ -211,6 +223,50 @@ def upload_book(
     return _book_out(db, book, user)
 
 
+def _apply_device_content(book: Book, content: DeviceContentIn) -> None:
+    book.status = content.status
+    book.status_message = clean_text(content.status_message or "")[:500] or None
+    book.content_version = content.content_version
+    book.chapter_count = content.chapter_count
+    book.word_count = content.word_count
+    book.ocr_requested = content.ocr_requested
+    book.ocr_used = content.ocr_used
+    book.warnings = [clean_text(w)[:500] for w in content.warnings if clean_text(w)]
+
+
+@router.post("/device", response_model=BookOut, status_code=status.HTTP_201_CREATED)
+def register_device_book(payload: DeviceBookIn, response: Response, user: CurrentUser, db: DB) -> BookOut:
+    """Register a book whose PDF stays on the device (app). Idempotent: the same file (SHA-256)
+    already in the account returns the existing book, so a second device that imports the same PDF
+    joins its progress and annotations instead of creating a duplicate."""
+    s = get_settings()
+    ratelimit.enforce("upload", str(user.id), s.upload_rate_limit, s.upload_rate_window)
+    existing = db.scalar(select(Book).where(Book.owner_id == user.id, Book.sha256 == payload.sha256))
+    if existing is not None:
+        response.status_code = status.HTTP_200_OK
+        return _book_out(db, existing, user)
+    if payload.id is not None and db.get(Book, payload.id) is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Identificador de livro já utilizado.")
+    filename = _safe_filename(payload.original_filename)
+    book = Book(
+        id=payload.id or uuid.uuid4(),
+        owner_id=user.id,
+        title=clean_text(payload.title)[:300] or _title_from_filename(filename),
+        author=clean_text(payload.author or "")[:300] or None,
+        original_filename=filename,
+        file_key="",
+        file_size=payload.file_size,
+        sha256=payload.sha256,
+        storage_mode="device",
+        page_count=payload.page_count,
+    )
+    _apply_device_content(book, payload.content)
+    db.add(book)
+    db.commit()
+    log.info("device book %s registered (%s pages)", book.id, book.page_count)
+    return _book_out(db, book, user)
+
+
 @router.get("/dashboard", response_model=DashboardOut)
 def dashboard(user: CurrentUser, db: DB) -> DashboardOut:
     counts = dict(db.execute(select(Book.status, func.count()).where(Book.owner_id == user.id).group_by(Book.status)).all())
@@ -259,6 +315,15 @@ def update_book(payload: BookUpdateIn, book: OwnedBook, user: CurrentUser, db: D
     return _book_out(db, book, user)
 
 
+@router.put("/{book_id}/device-content", response_model=BookOut)
+def update_device_content(payload: DeviceContentIn, book: OwnedBook, user: CurrentUser, db: DB) -> BookOut:
+    if book.storage_mode != "device":
+        raise HTTPException(status.HTTP_409_CONFLICT, "Este livro é convertido pelo servidor.")
+    _apply_device_content(book, payload)
+    db.commit()
+    return _book_out(db, book, user)
+
+
 @router.delete("/{book_id}", status_code=status.HTTP_204_NO_CONTENT)
 def remove_book(book: OwnedBook, db: DB) -> None:
     delete_book(db, book)
@@ -267,6 +332,8 @@ def remove_book(book: OwnedBook, db: DB) -> None:
 @router.post("/{book_id}/reprocess", response_model=BookOut)
 def reprocess(payload: ReprocessIn, book: OwnedBook, user: CurrentUser, db: DB) -> BookOut:
     s = get_settings()
+    if book.storage_mode == "device":
+        raise HTTPException(status.HTTP_409_CONFLICT, "Este livro é convertido no aparelho onde foi importado. Reprocesse-o pelo app.")
     if payload.ocr and not s.ocr_enabled:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "O OCR está desativado neste servidor.")
     active = queue.latest_job(db, book.id)
@@ -281,6 +348,8 @@ def reprocess(payload: ReprocessIn, book: OwnedBook, user: CurrentUser, db: DB) 
 
 @router.get("/{book_id}/file")
 def book_file(book: OwnedBook) -> FileResponse:
+    if book.storage_mode == "device":
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "O PDF deste livro fica guardado no aparelho onde foi importado.")
     path = storage.original_path(book.file_key)
     if not path.is_file():
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Arquivo original não encontrado.")

@@ -1,0 +1,87 @@
+{
+ "page_count": 3,
+ "word_count": 386,
+ "needs_ocr": false,
+ "chapters": [
+  {
+   "title": "Capítulo 1 — O Começo",
+   "level": 1,
+   "start_page": 1,
+   "end_page": 1,
+   "sections": [],
+   "blocks": [
+    {
+     "type": "heading",
+     "page": 1,
+     "text": "Capítulo 1 ? O Começo",
+     "level": 1
+    },
+    {
+     "type": "paragraph",
+     "page": 1,
+     "text": "Parágrafo 1.1. A leitura atenta exige tempo e silêncio. Cada parágrafo deste documento foi escrito para testar a reconstrução do texto, a quebra automática de linhas e a preservação da ordem de leitura em diferentes tamanhos de fonte. Palavras longas como extraordinariamente e responsabilidade ajudam a verificar a hifenização no fim das linhas."
+    },
+    {
+     "type": "paragraph",
+     "page": 1,
+     "text": "Parágrafo 1.2. A leitura atenta exige tempo e silêncio. Cada parágrafo deste documento foi escrito para testar a reconstrução do texto, a quebra automática de linhas e a preservação da ordem de leitura em diferentes tamanhos de fonte. Palavras longas como extraordinariamente e responsabilidade ajudam a verificar a hifenização no fim das linhas."
+    },
+    {
+     "type": "paragraph",
+     "page": 1,
+     "text": "Parágrafo 1.3. A leitura atenta exige tempo e silêncio. Cada parágrafo deste documento foi escrito para testar a reconstrução do texto, a quebra automática de linhas e a preservação da ordem de leitura em diferentes tamanhos de fonte. Palavras longas como extraordinariamente e responsabilidade ajudam a verificar a hifenização no fim das linhas."
+    }
+   ]
+  },
+  {
+   "title": "Capítulo 2 — A Travessia",
+   "level": 1,
+   "start_page": 2,
+   "end_page": 2,
+   "sections": [],
+   "blocks": [
+    {
+     "type": "heading",
+     "page": 2,
+     "text": "Capítulo 2 ? A Travessia",
+     "level": 1
+    },
+    {
+     "type": "paragraph",
+     "page": 2,
+     "text": "Parágrafo 2.1. A leitura atenta exige tempo e silêncio. Cada parágrafo deste documento foi escrito para testar a reconstrução do texto, a quebra automática de linhas e a preservação da ordem de leitura em diferentes tamanhos de fonte. Palavras longas como extraordinariamente e responsabilidade ajudam a verificar a hifenização no fim das linhas."
+    },
+    {
+     "type": "paragraph",
+     "page": 2,
+     "text": "Parágrafo 2.2. A leitura atenta exige tempo e silêncio. Cada parágrafo deste documento foi escrito para testar a reconstrução do texto, a quebra automática de linhas e a preservação da ordem de leitura em diferentes tamanhos de fonte. Palavras longas como extraordinariamente e responsabilidade ajudam a verificar a hifenização no fim das linhas."
+    }
+   ]
+  },
+  {
+   "title": "Capítulo 3 — O Retorno",
+   "level": 1,
+   "start_page": 3,
+   "end_page": 3,
+   "sections": [],
+   "blocks": [
+    {
+     "type": "heading",
+     "page": 3,
+     "text": "Capítulo 3 ? O Retorno",
+     "level": 1
+    },
+    {
+     "type": "paragraph",
+     "page": 3,
+     "text": "Parágrafo 3.1. A leitura atenta exige tempo e silêncio. Cada parágrafo deste documento foi escrito para testar a reconstrução do texto, a quebra automática de linhas e a preservação da ordem de leitura em diferentes tamanhos de fonte. Palavras longas como extraordinariamente e responsabilidade ajudam a verificar a hifenização no fim das linhas."
+    },
+    {
+     "type": "paragraph",
+     "page": 3,
+     "text": "Parágrafo 3.2. A leitura atenta exige tempo e silêncio. Cada parágrafo deste documento foi escrito para testar a reconstrução do texto, a quebra automática de linhas e a preservação da ordem de leitura em diferentes tamanhos de fonte. Palavras longas como extraordinariamente e responsabilidade ajudam a verificar a hifenização no fim das linhas."
+    }
+   ]
+  }
+ ]
+}

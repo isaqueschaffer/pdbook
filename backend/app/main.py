@@ -48,7 +48,10 @@ def create_app() -> FastAPI:
             allow_origins=settings.allowed_origins,
             allow_credentials=True,
             allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
-            allow_headers=["Content-Type", "X-Requested-With"],
+            # Authorization / X-PDBook-Client: the mobile app (bearer token). Range: pdf.js streaming
+            # a server-stored PDF into the app.
+            allow_headers=["Content-Type", "X-Requested-With", "Authorization", "X-PDBook-Client", "Range"],
+            expose_headers=["Content-Length", "Content-Range", "Accept-Ranges"],
         )
 
     @app.middleware("http")

@@ -12,6 +12,9 @@ no **Neon PostgreSQL**.
 
 - Implantação: [docs/DEPLOY_OCI.md](docs/DEPLOY_OCI.md)
 - Backup e restauração: [docs/BACKUP.md](docs/BACKUP.md)
+- **App para celular** (Android, com Capacitor): [docs/APP.md](docs/APP.md). No app, o PDF, a conversão e
+  o OCR ficam no aparelho e funcionam offline; o servidor guarda a conta e sincroniza o progresso, os
+  marcadores e as preferências.
 
 ---
 
