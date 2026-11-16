@@ -6,6 +6,33 @@ import { AuthShell } from "../components/AppLayout";
 import { Alert, Button, TextField } from "../components/ui";
 import { ME_KEY, safeNext } from "../features/auth/auth";
 import { ApiError, api } from "../services/api";
+import { IS_APP, apiOrigin, normalizeServer, setServer } from "../services/platform";
+
+/** App only: which PDBook server to sign in to (the same APK works with any installation). */
+function useServer() {
+  const [server, setServerText] = useState(() => (IS_APP ? apiOrigin().replace(/^https:\/\//, "") : ""));
+  const field = IS_APP ? (
+    <TextField
+      label="Servidor"
+      autoComplete="url"
+      inputMode="url"
+      autoCapitalize="none"
+      required
+      value={server}
+      onChange={(e) => setServerText(e.target.value)}
+      hint="Endereço do seu servidor PDBook, por exemplo leitura.exemplo.com"
+    />
+  ) : null;
+  /** Apply the address before signing in; returns an error message when it is not valid. */
+  const apply = (): string | null => {
+    if (!IS_APP) return null;
+    const origin = normalizeServer(server);
+    if (!origin) return "Informe o endereço do servidor PDBook, por exemplo leitura.exemplo.com.";
+    setServer(origin);
+    return null;
+  };
+  return { field, apply };
+}
 
 function fieldErrors(e: unknown): Record<string, string> {
   if (e instanceof ApiError && e.data && typeof e.data === "object" && "errors" in e.data) {
@@ -27,10 +54,14 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const server = useServer();
+
   async function submit(e: FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+    const bad = server.apply();
+    if (bad) return setError(bad);
+    setLoading(true);
     try {
       const user = await api.login(email, password);
       qc.setQueryData(ME_KEY, user);
@@ -48,6 +79,7 @@ export function LoginPage() {
       <p className="mt-1 text-sm text-ink-soft">Continue de onde parou.</p>
       <form onSubmit={submit} className="mt-6 space-y-4" noValidate>
         {error && <Alert tone="danger">{error}</Alert>}
+        {server.field}
         <TextField label="E-mail" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoFocus />
         <TextField label="Senha" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
         <Button type="submit" loading={loading} className="w-full" disabled={!email || !password}>
@@ -75,10 +107,14 @@ export function RegisterPage() {
   const [fields, setFields] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
+  const server = useServer();
+
   async function submit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setFields({});
+    const bad = server.apply();
+    if (bad) return setError(bad);
     if (password !== confirm) {
       setFields({ confirm: "As senhas não coincidem." });
       return;
@@ -103,6 +139,7 @@ export function RegisterPage() {
       <p className="mt-1 text-sm text-ink-soft">Sua biblioteca pessoal, em qualquer dispositivo.</p>
       <form onSubmit={submit} className="mt-6 space-y-4" noValidate>
         {error && <Alert tone="danger">{error}</Alert>}
+        {server.field}
         <TextField label="Nome" autoComplete="name" required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} error={fields.display_name} autoFocus />
         <TextField label="E-mail" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} error={fields.email} />
         <TextField

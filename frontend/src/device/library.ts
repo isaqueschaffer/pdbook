@@ -4,7 +4,7 @@
  * and only directly for account operations and books converted by the server.
  */
 import { ApiError, isNetworkError, request, requestBlob, authHeaders } from "../services/http";
-import { API_BASE, session } from "../services/platform";
+import { apiBase, session } from "../services/platform";
 import type {
   Book,
   BookPage,
@@ -305,7 +305,7 @@ async function pdfSource(id: string): Promise<PdfSource> {
     const url = URL.createObjectURL(file);
     return { url, release: () => URL.revokeObjectURL(url) };
   }
-  if (isServerBook(b)) return { url: `${API_BASE}/books/${id}/file`, httpHeaders: authHeaders() };
+  if (isServerBook(b)) return { url: `${apiBase()}/books/${id}/file`, httpHeaders: authHeaders() };
   throw new ApiError(404, "O PDF deste livro está guardado em outro aparelho.");
 }
 
@@ -328,7 +328,9 @@ async function imageSrc(id: string, name: string, version: number): Promise<{ sr
 async function progress(id: string): Promise<Progress | null> {
   const local = (await db.get<Progress>(db.STORES.progress, id)) ?? null;
   const b = await db.get<Book>(db.STORES.books, id);
-  if (!b || (!isServerBook(b) && !b.device?.registered)) return local;
+  // Ask the server even for a book still being registered (brought from another phone): a 404 only
+  // means there is nothing there yet.
+  if (!b) return local;
   try {
     const remote = await request<Progress | null>(`/books/${id}/progress`);
     if (remote && ts(remote.updated_at) > ts(local?.updated_at)) {
@@ -362,7 +364,7 @@ const markOrder = (a: Bookmark, b: Bookmark) =>
 
 async function bookmarks(id: string): Promise<Bookmark[]> {
   const b = await db.get<Book>(db.STORES.books, id);
-  if (b && (isServerBook(b) || b.device?.registered)) {
+  if (b) {
     try {
       const remote = await request<Bookmark[]>(`/books/${id}/bookmarks`);
       // Marks with changes still queued keep their local version.

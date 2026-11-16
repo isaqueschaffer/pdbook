@@ -1,7 +1,8 @@
 // Builds the public directory of the app (vite --mode app): the website's public/ plus the
 // on-device OCR engine (tesseract.js worker, WebAssembly core, Portuguese and English data).
 // Kept out of the website build, where OCR runs on the server and these ~16 MB would be dead weight.
-import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { gunzipSync } from "node:zlib";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 
@@ -25,6 +26,8 @@ for (const variant of ["tesseract-core-lstm", "tesseract-core-simd-lstm", "tesse
 for (const lang of ["por", "eng"]) {
   const file = join(pkg(`@tesseract.js-data/${lang}`), "4.0.0_best_int", `${lang}.traineddata.gz`);
   if (!existsSync(file)) throw new Error(`missing OCR data: ${file}`);
-  cpSync(file, join(ocr, "lang", `${lang}.traineddata.gz`));
+  // Stored uncompressed: Android's packager gunzips *.gz assets and drops the extension, so a
+  // .gz file would not be found inside the APK. The APK compresses it anyway.
+  writeFileSync(join(ocr, "lang", `${lang}.traineddata`), gunzipSync(readFileSync(file)));
 }
 console.log("app public dir ready at .app-public (with OCR assets)");

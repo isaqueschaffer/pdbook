@@ -20,7 +20,7 @@ async function getWorker(): Promise<Worker> {
       workerPath: "/tesseract/worker.min.js",
       corePath: "/tesseract/core",
       langPath: "/tesseract/lang",
-      gzip: true,
+      gzip: false, // bundled uncompressed (see scripts/prepare-app-public.mjs)
       cacheMethod: "none", // the data already lives inside the app
       workerBlobURL: false,
     });

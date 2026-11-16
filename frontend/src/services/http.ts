@@ -1,4 +1,4 @@
-import { API_BASE, IS_APP, session } from "./platform";
+import { IS_APP, apiBase, session } from "./platform";
 
 export class ApiError extends Error {
   status: number;
@@ -41,7 +41,7 @@ export async function request<T>(path: string, init: RequestInit & { json?: unkn
   const auth = authHeaders();
   let res: Response;
   try {
-    res = await fetch(`${API_BASE}${path}`, {
+    res = await fetch(`${apiBase()}${path}`, {
       credentials: IS_APP ? "omit" : "same-origin",
       ...rest,
       headers: { ...auth, ...(json !== undefined ? { "Content-Type": "application/json" } : {}), ...headers },
@@ -64,7 +64,7 @@ export async function request<T>(path: string, init: RequestInit & { json?: unkn
 export async function requestBlob(path: string): Promise<Blob> {
   let res: Response;
   try {
-    res = await fetch(`${API_BASE}${path}`, { credentials: IS_APP ? "omit" : "same-origin", headers: authHeaders() });
+    res = await fetch(`${apiBase()}${path}`, { credentials: IS_APP ? "omit" : "same-origin", headers: authHeaders() });
   } catch {
     throw new ApiError(0, messageFrom(0, null));
   }

@@ -42,7 +42,7 @@ export function SessionWatcher() {
     // App: a sync brought changes from the server (another device, the website): refresh the screens.
     const stopSync = IS_APP
       ? onSyncChange(() => {
-          for (const key of ["books", "dashboard", "book", "preferences", "storage"]) void qc.invalidateQueries({ queryKey: [key] });
+          for (const key of ["books", "dashboard", "book", "reader", "preferences", "storage"]) void qc.invalidateQueries({ queryKey: [key] });
         })
       : () => {};
     return () => {

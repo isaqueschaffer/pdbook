@@ -82,6 +82,31 @@ atualizações.
 
 Depois de mudar o código, rode `npm run android:sync` de novo antes de compilar.
 
+**Endereço do servidor.** `VITE_API_URL` é só o valor que já vem preenchido. Na tela de login e de
+cadastro, o app tem o campo **Servidor**, então o mesmo APK funciona com qualquer instalação do
+PDBook. Trocar o servidor encerra a sessão anterior.
+
+### Compilar pela linha de comando (sem abrir o Android Studio)
+
+Requer o JDK 21 e o SDK com `platforms;android-36` e `build-tools;36.0.0`.
+
+**Windows com acento no caminho** (por exemplo `C:\Users\Usuário\...`): as ferramentas do Android
+falham com caminhos fora do ASCII. Use o SDK e o cache do Gradle em pastas sem acento e compile por
+um atalho de pasta (junction):
+
+```powershell
+New-Item -ItemType Junction -Path C:\pdbook -Target "<pasta do projeto>"
+Set-Content C:\pdbook\frontend\android\local.properties 'sdk.dir=C\:\\Android\\Sdk' -Encoding ascii
+$env:JAVA_HOME = 'C:\Program Files\Microsoft\jdk-21.0.13.21-hotspot'
+$env:GRADLE_USER_HOME = 'C:\gradle'
+C:\pdbook\frontend\android\gradlew.bat -p C:\pdbook\frontend\android assembleDebug
+# APK em C:\pdbook\frontend\android\app\build\outputs\apk\debug\app-debug.apk
+```
+
+O APK de debug serve para instalar e testar (`adb install app-debug.apk` ou copiando para o celular
+com "instalar apps desconhecidos" liberado). Para distribuir, gere a versão assinada (`assembleRelease`
+com uma chave de assinatura, ou pelo Android Studio).
+
 O identificador do app é `br.com.pdbook.app` (`frontend/capacitor.config.ts`). Troque-o antes da
 primeira publicação, se quiser outro: ele não pode mudar depois.
 
